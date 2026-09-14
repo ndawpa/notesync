@@ -1,0 +1,8 @@
+{{- if .Values.ingress.enabled }}
+Abra http{{ if .Values.ingress.tls }}s{{ end }}://{{ (index .Values.ingress.hosts 0).host }}
+{{- else }}
+kubectl port-forward service/{{ include "notesync.fullname" . }} 8080:{{ .Values.service.port }} --namespace {{ .Release.Namespace }}
+Abra http://localhost:8080
+{{- end }}
+
+O acesso ao microfone exige HTTPS, exceto em localhost.
