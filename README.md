@@ -58,6 +58,16 @@ helm upgrade --install notesync ./helm \
 
 HTTPS é obrigatório em produção para o navegador permitir acesso ao microfone.
 
+### GitHub Pages
+
+O workflow `pages.yml` também publica automaticamente a interface em:
+
+```text
+https://ndawpa.github.io/notesync/
+```
+
+No primeiro uso, abra **Settings → Pages** no repositório e, em **Build and deployment → Source**, selecione **GitHub Actions**. O deploy seguinte criará ou atualizará a URL pública com HTTPS.
+
 ## Exercícios
 
 Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento. Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
