@@ -4,6 +4,7 @@ export interface ReferenceNote {
   midi: number
   start: number
   duration: number
+  lyric?: string
 }
 
 export interface ReferenceTrack {
@@ -14,4 +15,4 @@ export interface ReferenceTrack {
 }
 
 export type MusicView = 'timeline' | 'score'
-export type NoteNaming = 'letter' | 'solfege' | 'hidden'
+export type NoteNaming = 'letter' | 'solfege' | 'lyrics' | 'hidden'

@@ -84,11 +84,13 @@ No primeiro uso, abra **Settings → Pages** no repositório e, em **Build and d
 
 Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento. Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
 
+O BPM pode ser alterado entre 20 e 300 antes de iniciar. A aplicação redimensiona o tempo das notas e preserva proporcionalmente eventuais mudanças de andamento do MIDI. Quando o arquivo contém eventos MIDI de letra (`Lyric`, ou `Text` como alternativa), a opção **Letra** fica disponível nos rótulos da timeline e da partitura.
+
 O JSON continua aceitando um array de notas ou `{ "name", "bpm", "notes" }`. Veja `public/exercicio-exemplo.json`.
 
 ## Limites conhecidos
 
-- A referência começa assim que o acesso ao microfone é concedido; não há áudio de acompanhamento nem contagem regressiva.
+- A letra só pode ser exibida quando estiver realmente embutida como evento de texto no MIDI; arquivos que contêm apenas notas não permitem recuperar a letra da música.
 - O ritmo usa o primeiro e último frame vocal de cada nota como aproximação de onset e duração.
 - Ambientes ruidosos, microfones com processamento próprio e harmônicos fortes podem afetar o YIN.
 - Os thresholds ficam em `src/config.ts` e devem ser calibrados em dispositivos reais.

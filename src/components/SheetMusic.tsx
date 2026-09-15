@@ -37,14 +37,15 @@ function NoteGlyph({ note, track, naming, clef, selected, onSelect }: { note: Re
   const y = noteY(note.midi, clef)
   const ledgerLines = ledgerLinePositions(y, STAFF_TOP, STAFF_BOTTOM, 12)
   const dotted = figure.name.includes('pontuada')
-  return <g className={`score-note ${selected ? 'selected' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${midiToDisplayName(note.midi, naming === 'hidden' ? 'letter' : naming)}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
+  const visibleLabel = naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming, false)
+  return <g className={`score-note ${selected ? 'selected' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${note.lyric && naming === 'lyrics' ? `${note.lyric}, ` : ''}${midiToDisplayName(note.midi, 'letter')}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
     {ledgerLines.map((lineY) => <line key={lineY} className="ledger-line" x1={x - 12} x2={x + 12} y1={lineY} y2={lineY} />)}
     {isSharpMidi(note.midi) && <text className="accidental" x={x - 18} y={y + 5}>♯</text>}
     <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`} />
     {figure.stem && <line className="note-stem" x1={x + 7} x2={x + 7} y1={y} y2={y - 31} />}
     {Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={`M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`} />)}
     {dotted && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5" />}
-    {naming !== 'hidden' && <text className="score-note-name" x={x} y={132} textAnchor="middle">{midiToDisplayName(note.midi, naming, false)}</text>}
+    {naming !== 'hidden' && <text className="score-note-name" x={x} y={132} textAnchor="middle">{visibleLabel}</text>}
   </g>
 }
 

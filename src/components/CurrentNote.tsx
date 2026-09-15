@@ -6,7 +6,7 @@ import { pitchStatus } from '../scoring/pitchScoring'
 interface Props { expected?: ReferenceNote; detected?: PitchFrame; differenceCents?: number; volume: number; naming: NoteNaming }
 
 export function CurrentNote({ expected, detected, differenceCents, volume, naming }: Props) {
-  const feedbackNaming = naming === 'hidden' ? 'letter' : naming
+  const feedbackNaming = naming === 'hidden' || naming === 'lyrics' ? 'letter' : naming
   const status = differenceCents === undefined ? 'Aguardando voz' : pitchStatus(differenceCents)
   const direction = differenceCents === undefined || Math.abs(differenceCents) <= 20 ? '' : differenceCents > 0 ? ' • acima' : ' • abaixo'
   return <section className="current-card" aria-live="polite">

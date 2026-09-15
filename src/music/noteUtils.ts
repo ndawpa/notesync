@@ -6,8 +6,8 @@ export const midiToFrequency = (midi: number) => 440 * 2 ** ((midi - 69) / 12)
 export const midiToNoteName = (midi: number) => `${NOTE_NAMES[((Math.round(midi) % 12) + 12) % 12]}${Math.floor(Math.round(midi) / 12) - 1}`
 const SOLFEGE_NAMES = ['Dó', 'Dó#', 'Ré', 'Ré#', 'Mi', 'Fá', 'Fá#', 'Sol', 'Sol#', 'Lá', 'Lá#', 'Si']
 export const midiToSolfegeName = (midi: number) => `${SOLFEGE_NAMES[((Math.round(midi) % 12) + 12) % 12]}${Math.floor(Math.round(midi) / 12) - 1}`
-export function midiToDisplayName(midi: number, naming: 'letter' | 'solfege' | 'hidden', includeOctave = true) {
-  if (naming === 'hidden') return ''
+export function midiToDisplayName(midi: number, naming: 'letter' | 'solfege' | 'lyrics' | 'hidden', includeOctave = true) {
+  if (naming === 'hidden' || naming === 'lyrics') return ''
   const complete = naming === 'solfege' ? midiToSolfegeName(midi) : midiToNoteName(midi)
   return includeOctave ? complete : complete.replace(/-?\d+$/, '')
 }

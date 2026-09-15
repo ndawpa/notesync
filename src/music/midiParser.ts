@@ -3,7 +3,8 @@ import { midiToNoteName } from './noteUtils'
 
 interface RawNote { midi: number; startTick: number; endTick: number }
 interface TempoEvent { tick: number; microsecondsPerBeat: number }
-interface ParsedMidiTrack { name?: string; notes: RawNote[] }
+interface RawText { tick: number; text: string }
+interface ParsedMidiTrack { name?: string; notes: RawNote[]; lyrics: RawText[]; texts: RawText[] }
 
 class MidiReader {
   offset = 0
@@ -25,6 +26,7 @@ function parseTrack(data: Uint8Array, tempos: TempoEvent[]): ParsedMidiTrack {
   const reader = new MidiReader(new DataView(data.buffer, data.byteOffset, data.byteLength))
   const active = new Map<string, Array<{ midi: number; startTick: number }>>()
   const notes: RawNote[] = []
+  const lyrics: RawText[] = [], texts: RawText[] = []
   let tick = 0, runningStatus = 0, name: string | undefined
   while (reader.remaining > 0) {
     tick += reader.variableLength()
@@ -39,6 +41,8 @@ function parseTrack(data: Uint8Array, tempos: TempoEvent[]): ParsedMidiTrack {
       runningStatus = 0
       const type = reader.byte(), length = reader.variableLength(), payload = reader.bytes(length)
       if (type === 0x03) name = new TextDecoder().decode(payload)
+      if (type === 0x05) lyrics.push({ tick, text: new TextDecoder().decode(payload) })
+      if (type === 0x01) texts.push({ tick, text: new TextDecoder().decode(payload) })
       if (type === 0x51 && payload.length === 3) tempos.push({ tick, microsecondsPerBeat: (payload[0] << 16) | (payload[1] << 8) | payload[2] })
       if (type === 0x2f) break
       continue
@@ -60,7 +64,7 @@ function parseTrack(data: Uint8Array, tempos: TempoEvent[]): ParsedMidiTrack {
       if (entries?.length === 0) active.delete(key)
     }
   }
-  return { name, notes }
+  return { name, notes, lyrics, texts }
 }
 
 function makeTempoConverter(events: TempoEvent[], ticksPerBeat: number) {
@@ -111,9 +115,24 @@ export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI')
   const selected = tracks.filter((track) => track.notes.length).sort((a, b) => b.notes.length - a.notes.length)[0]
   if (!selected) throw new Error('Nenhuma nota foi encontrada no arquivo MIDI.')
   const tickToSeconds = makeTempoConverter(tempos, division)
-  const notes: ReferenceNote[] = toMonophonic(selected.notes).map((note, index) => ({
+  const monophonicNotes = toMonophonic(selected.notes)
+  const lyricTrack = tracks.filter((track) => track.lyrics.length).sort((a, b) => b.lyrics.length - a.lyrics.length)[0]
+  const textTrack = tracks.filter((track) => track.texts.length).sort((a, b) => b.texts.length - a.texts.length)[0]
+  const rawLyrics = lyricTrack?.lyrics.length ? lyricTrack.lyrics : (textTrack?.texts ?? []).filter((item) => !item.text.trim().startsWith('@'))
+  const lyricsByNote = new Map<number, string>()
+  for (const lyric of rawLyrics) {
+    const text = lyric.text.replace(/^[\\/]+/, '').trim()
+    if (!text) continue
+    let noteIndex = monophonicNotes.findIndex((note) => lyric.tick >= note.startTick && lyric.tick < note.endTick)
+    if (noteIndex < 0) noteIndex = monophonicNotes.findIndex((note) => note.startTick >= lyric.tick)
+    if (noteIndex < 0) noteIndex = monophonicNotes.length - 1
+    const previous = lyricsByNote.get(noteIndex)
+    lyricsByNote.set(noteIndex, previous ? `${previous}${previous.endsWith('-') ? '' : ' '}${text}` : text)
+  }
+  const notes: ReferenceNote[] = monophonicNotes.map((note, index) => ({
     id: String(index + 1), pitch: midiToNoteName(note.midi), midi: note.midi,
     start: tickToSeconds(note.startTick), duration: tickToSeconds(note.endTick) - tickToSeconds(note.startTick),
+    lyric: lyricsByNote.get(index),
   }))
   const cleanName = fileName.replace(/\.(mid|midi)$/i, '')
   const orderedTempos = [{ tick: 0, microsecondsPerBeat: 500_000 }, ...tempos]

@@ -10,7 +10,7 @@ import { MusicViewControls } from './components/MusicViewControls'
 import { NoteEditor } from './components/NoteEditor'
 import { ScorePanel } from './components/ScorePanel'
 import { frequencyDifferenceInCents, frequencyToMidi, frequencyToMidiFloat, midiToFrequency, midiToNoteName } from './music/noteUtils'
-import { DEFAULT_TRACK, noteAtTime, parseReferenceTrack, trackDuration } from './music/referenceTrack'
+import { changeTrackBpm, DEFAULT_TRACK, noteAtTime, parseReferenceTrack, trackDuration } from './music/referenceTrack'
 import { parseMidiFile } from './music/midiParser'
 import { calculateSessionScore, type SessionScore } from './scoring/overallScore'
 import type { EvaluatedFrame, PitchFrame } from './types/audio'
@@ -127,6 +127,7 @@ export default function App() {
     try {
       const isMidi = /\.(mid|midi)$/i.test(file.name)
       const next = isMidi ? parseMidiFile(await file.arrayBuffer(), file.name) : parseReferenceTrack(JSON.parse(await file.text()))
+      if (noteNaming === 'lyrics' && !next.notes.some((note) => note.lyric?.trim())) setNoteNaming('letter')
       setTrack(next); setSelectedNoteId(undefined); reset(); setError('')
     }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível ler o exercício.') }
@@ -150,6 +151,7 @@ export default function App() {
     setSelectedNoteId(id); reset()
   }
   const selectNote = (id: string) => { if (!running) setSelectedNoteId(id) }
+  const changeBpm = (bpm: number) => { setTrack((current) => changeTrackBpm(current, bpm)); reset() }
   const selectedNote = track.notes.find((note) => note.id === selectedNoteId)
 
   return <main>
@@ -158,7 +160,7 @@ export default function App() {
     {error && <p className="error" role="alert">{error}</p>}
     {countdown !== undefined && <div className="countdown" role="status"><span>Prepare-se</span><strong>{countdown}</strong></div>}
     <CurrentNote expected={expected} detected={detected} differenceCents={difference} volume={volume} naming={noteNaming} />
-    <MusicViewControls view={musicView} naming={noteNaming} clef={clefPreference} disabled={running} onViewChange={setMusicView} onNamingChange={setNoteNaming} onClefChange={setClefPreference} onAddNote={addNote} />
+    <MusicViewControls view={musicView} naming={noteNaming} clef={clefPreference} bpm={track.tempoChanges?.[0]?.bpm ?? track.bpm ?? 60} hasLyrics={track.notes.some((note) => Boolean(note.lyric?.trim()))} disabled={running} onViewChange={setMusicView} onNamingChange={setNoteNaming} onClefChange={setClefPreference} onBpmChange={changeBpm} onAddNote={addNote} />
     {musicView === 'timeline' ? <PitchVisualizer track={track} frames={frames} elapsed={elapsed} running={running} naming={noteNaming} selectedNoteId={selectedNoteId} onSelectNote={selectNote} /> : <SheetMusic track={track} elapsed={elapsed} running={running} naming={noteNaming} clefPreference={clefPreference} selectedNoteId={selectedNoteId} onSelectNote={selectNote} />}
     <progress className="progress" max={trackDuration(track)} value={Math.min(elapsed, trackDuration(track))} aria-label="Progresso do exercício" />
     {selectedNote && !running && <NoteEditor key={selectedNote.id} note={selectedNote} naming={noteNaming} canDelete={track.notes.length > 1} onSave={saveNote} onDelete={deleteNote} onClose={() => setSelectedNoteId(undefined)} />}

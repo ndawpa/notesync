@@ -5,7 +5,7 @@ import type { NoteNaming, ReferenceNote } from '../types/music'
 interface Props { note: ReferenceNote; naming: NoteNaming; canDelete: boolean; onSave: (note: ReferenceNote) => void; onDelete: () => void; onClose: () => void }
 
 export function NoteEditor({ note, naming, canDelete, onSave, onDelete, onClose }: Props) {
-  const editorNaming = naming === 'hidden' ? 'letter' : naming
+  const editorNaming = naming === 'hidden' || naming === 'lyrics' ? 'letter' : naming
   const [midi, setMidi] = useState(note.midi)
   const [start, setStart] = useState(note.start)
   const [duration, setDuration] = useState(note.duration)

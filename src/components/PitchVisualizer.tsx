@@ -63,7 +63,7 @@ export function PitchVisualizer({ track, frames, elapsed, running, naming, selec
           {timeTicks.map((time) => <g key={time}><line x1={x(time)} x2={x(time)} y1={TOP} y2={HEIGHT - BOTTOM} className="time-grid" /><text x={x(time) + 3} y={HEIGHT - 10}>{time}s</text></g>)}
           {track.notes.map((note) => <g key={note.id} className={'timeline-note ' + (selectedNoteId === note.id ? 'selected' : '')} role="button" tabIndex={0} onClick={() => onSelectNote(note.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelectNote(note.id) }}>
             <rect className="expected-note" x={x(note.start)} y={y(note.midi) - 8} width={Math.max(4, note.duration * pixelsPerSecond)} height="16" rx="3" />
-            <text className="note-label" x={x(note.start) + 5} y={y(note.midi) - 12}>{midiToDisplayName(note.midi, naming)}</text>
+            <text className="note-label" x={x(note.start) + 5} y={y(note.midi) - 12}>{naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming)}</text>
           </g>)}
           {points && <polyline className="sung-line" points={points} />}
           <line className="playhead" x1={x(Math.min(elapsed, duration))} x2={x(Math.min(elapsed, duration))} y1={TOP} y2={HEIGHT - BOTTOM} />
