@@ -4,13 +4,13 @@ Protótipo local de treinamento vocal com React, TypeScript, Web Audio API e det
 
 A melodia de referência é sintetizada durante o exercício e pode ser ligada, desligada ou ter seu volume ajustado antes de iniciar. Use fones para evitar que o microfone capture a própria referência.
 
-O exercício também oferece metrônomo sincronizado ao andamento (incluindo mudanças de tempo do MIDI), tom inicial baseado na primeira nota e contagem preparatória configurável.
+O exercício também oferece metrônomo sincronizado ao andamento e à fórmula de compasso (incluindo mudanças encontradas no MIDI), tom inicial baseado na primeira nota e contagem preparatória configurável.
 
 A timeline usa escala temporal proporcional, oferece três níveis de zoom e acompanha automaticamente o playhead em exercícios maiores que a área visível.
 
 O eixo MIDI e o piano virtual permanecem fixos durante a rolagem; a tecla esperada é destacada em tempo real.
 
-O usuário pode alternar entre a timeline e uma partitura simplificada em 4/4, escolher entre cifras (`C`, `D`, `E`), nomes em português (`Dó`, `Ré`, `Mi`) ou ocultar os rótulos, e editar pitch, início e duração ao selecionar uma nota. Na partitura, os rótulos visuais omitem o número da oitava. As alterações permanecem na sessão atual do navegador.
+O usuário pode alternar entre a timeline e uma partitura simplificada que respeita fórmulas como 4/4, 3/4 e 6/8, escolher entre cifras (`C`, `D`, `E`), nomes em português (`Dó`, `Ré`, `Mi`) ou ocultar os rótulos, e editar pitch, início e duração ao selecionar uma nota. Na partitura, os rótulos visuais omitem o número da oitava. As alterações permanecem na sessão atual do navegador.
 
 Na partitura, a clave pode ser escolhida automaticamente ou definida manualmente como Sol, Sol 8vb ou Fá. O modo automático minimiza notas fora do pentagrama e linhas suplementares sem alterar a altura sonora usada na avaliação.
 
@@ -82,11 +82,11 @@ No primeiro uso, abra **Settings → Pages** no repositório e, em **Build and d
 
 ## Exercícios
 
-Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento. Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
+Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento e de fórmula de compasso (`Time Signature`, evento `0x58`). Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
 
 O BPM pode ser alterado entre 20 e 300 antes de iniciar. A aplicação redimensiona o tempo das notas e preserva proporcionalmente eventuais mudanças de andamento do MIDI. Quando o arquivo contém eventos MIDI de letra (`Lyric`, ou `Text` como alternativa), a opção **Letra** fica disponível nos rótulos da timeline e da partitura.
 
-O JSON continua aceitando um array de notas ou `{ "name", "bpm", "notes" }`. Veja `public/exercicio-exemplo.json`.
+O JSON continua aceitando um array de notas ou `{ "name", "bpm", "timeSignatures", "notes" }`. Veja `public/exercicio-exemplo.json`.
 
 ## Limites conhecidos
 

@@ -3,6 +3,7 @@ import { midiToNoteName } from './noteUtils'
 
 interface RawNote { midi: number; startTick: number; endTick: number }
 interface TempoEvent { tick: number; microsecondsPerBeat: number }
+interface TimeSignatureEvent { tick: number; numerator: number; denominator: number; clocksPerClick: number }
 interface RawText { tick: number; text: string }
 interface ParsedMidiTrack { name?: string; notes: RawNote[]; lyrics: RawText[]; texts: RawText[] }
 
@@ -22,7 +23,7 @@ class MidiReader {
   }
 }
 
-function parseTrack(data: Uint8Array, tempos: TempoEvent[]): ParsedMidiTrack {
+function parseTrack(data: Uint8Array, tempos: TempoEvent[], timeSignatures: TimeSignatureEvent[]): ParsedMidiTrack {
   const reader = new MidiReader(new DataView(data.buffer, data.byteOffset, data.byteLength))
   const active = new Map<string, Array<{ midi: number; startTick: number }>>()
   const notes: RawNote[] = []
@@ -44,6 +45,7 @@ function parseTrack(data: Uint8Array, tempos: TempoEvent[]): ParsedMidiTrack {
       if (type === 0x05) lyrics.push({ tick, text: new TextDecoder().decode(payload) })
       if (type === 0x01) texts.push({ tick, text: new TextDecoder().decode(payload) })
       if (type === 0x51 && payload.length === 3) tempos.push({ tick, microsecondsPerBeat: (payload[0] << 16) | (payload[1] << 8) | payload[2] })
+      if (type === 0x58 && payload.length === 4 && payload[0] > 0 && payload[1] <= 7) timeSignatures.push({ tick, numerator: payload[0], denominator: 2 ** payload[1], clocksPerClick: payload[2] || 24 })
       if (type === 0x2f) break
       continue
     }
@@ -107,10 +109,10 @@ export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI')
   if (division & 0x8000) throw new Error('MIDI com divisão temporal SMPTE ainda não é suportado.')
   if (!division || !trackCount) throw new Error('O arquivo MIDI não contém pistas válidas.')
 
-  const tempos: TempoEvent[] = [], tracks: ParsedMidiTrack[] = []
+  const tempos: TempoEvent[] = [], timeSignatures: TimeSignatureEvent[] = [], tracks: ParsedMidiTrack[] = []
   for (let index = 0; index < trackCount; index++) {
     if (reader.text(4) !== 'MTrk') throw new Error(`Cabeçalho da pista ${index + 1} inválido.`)
-    tracks.push(parseTrack(reader.bytes(reader.uint32()), tempos))
+    tracks.push(parseTrack(reader.bytes(reader.uint32()), tempos, timeSignatures))
   }
   const selected = tracks.filter((track) => track.notes.length).sort((a, b) => b.notes.length - a.notes.length)[0]
   if (!selected) throw new Error('Nenhuma nota foi encontrada no arquivo MIDI.')
@@ -139,5 +141,9 @@ export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI')
     .sort((a, b) => a.tick - b.tick)
     .filter((tempo, index, list) => index === list.length - 1 || tempo.tick !== list[index + 1].tick)
   const tempoChanges = orderedTempos.map((tempo) => ({ time: tickToSeconds(tempo.tick), bpm: 60_000_000 / tempo.microsecondsPerBeat }))
-  return { name: selected.name ? `${cleanName} — ${selected.name}` : cleanName, bpm: Math.round(tempoChanges[0].bpm), tempoChanges, notes }
+  const orderedSignatures = [{ tick: 0, numerator: 4, denominator: 4, clocksPerClick: 24 }, ...timeSignatures]
+    .sort((a, b) => a.tick - b.tick)
+    .filter((signature, index, list) => index === list.length - 1 || signature.tick !== list[index + 1].tick)
+  const parsedSignatures = orderedSignatures.map((signature) => ({ time: tickToSeconds(signature.tick), numerator: signature.numerator, denominator: signature.denominator, clocksPerClick: signature.clocksPerClick }))
+  return { name: selected.name ? `${cleanName} — ${selected.name}` : cleanName, bpm: Math.round(tempoChanges[0].bpm), tempoChanges, timeSignatures: parsedSignatures, notes }
 }

@@ -1,6 +1,7 @@
 {
   "name": "Escala curta em Dó",
   "bpm": 60,
+  "timeSignatures": [{ "time": 0, "numerator": 4, "denominator": 4 }],
   "notes": [
     { "pitch": "C4", "midi": 60, "start": 0, "duration": 1 },
     { "pitch": "D4", "midi": 62, "start": 1, "duration": 1 },

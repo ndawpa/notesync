@@ -35,6 +35,7 @@ header p { margin: 0; color: #99a7bd; }
 .clef-control, .bpm-control { display: flex; flex-direction: column; gap: 4px; color: #94a3b8; font-size: .72rem; }
 .clef-control select, .bpm-control input { min-width: 92px; padding: 6px 8px; color: #e8edf5; background: #202b41; border: 1px solid #43516b; border-radius: 6px; }
 .clef-control select { min-width: 120px; }
+.time-signature { fill: #e8edf5; font-family: Georgia, serif; font-size: 20px; font-weight: 700; }
 .status.afinado, .status.aceitável { color: #43d9ad; }
 .status.desafinado { color: #ffc857; }
 .status.erro-significativo { color: #ff6b7a; }

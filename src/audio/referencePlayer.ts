@@ -4,6 +4,31 @@ import type { ReferenceTrack } from '../types/music'
 const ATTACK_SECONDS = 0.015
 const RELEASE_SECONDS = 0.04
 
+function beatAtTime(track: ReferenceTrack, target: number) {
+  const tempos = track.tempoChanges?.length ? track.tempoChanges : [{ time: 0, bpm: track.bpm ?? 60 }]
+  let beats = 0
+  for (let index = 0; index < tempos.length; index++) {
+    const tempo = tempos[index]
+    if (tempo.time >= target) break
+    const end = Math.min(target, tempos[index + 1]?.time ?? target)
+    beats += Math.max(0, end - tempo.time) * tempo.bpm / 60
+  }
+  return beats
+}
+
+function timeAtBeat(track: ReferenceTrack, targetBeat: number) {
+  const tempos = track.tempoChanges?.length ? track.tempoChanges : [{ time: 0, bpm: track.bpm ?? 60 }]
+  let elapsedBeats = 0
+  for (let index = 0; index < tempos.length; index++) {
+    const tempo = tempos[index]
+    const segmentEnd = tempos[index + 1]?.time
+    const segmentBeats = segmentEnd === undefined ? Number.POSITIVE_INFINITY : (segmentEnd - tempo.time) * tempo.bpm / 60
+    if (targetBeat <= elapsedBeats + segmentBeats) return tempo.time + (targetBeat - elapsedBeats) * 60 / tempo.bpm
+    elapsedBeats += segmentBeats
+  }
+  return 0
+}
+
 export class ReferencePlayer {
   private readonly masterGain: GainNode
   private readonly oscillators: OscillatorNode[] = []
@@ -48,16 +73,25 @@ export class ReferencePlayer {
 
   scheduleMetronome(track: ReferenceTrack, startedAt: number, countStartedAt: number, countInBeats: number) {
     const initialBpm = track.tempoChanges?.[0]?.bpm ?? track.bpm ?? 60
-    const countBeatDuration = 60 / initialBpm
+    const initialSignature = track.timeSignatures?.[0]
+    const countPulseBeats = initialSignature?.clocksPerClick ? initialSignature.clocksPerClick / 24 : (initialSignature && initialSignature.numerator > 3 && initialSignature.numerator % 3 === 0 ? 1.5 : 4 / (initialSignature?.denominator ?? 4))
+    const countBeatDuration = 60 / initialBpm * countPulseBeats
     for (let beat = 0; beat < countInBeats; beat++) this.scheduleClick(countStartedAt + beat * countBeatDuration, beat === 0)
 
-    const tempos = track.tempoChanges?.length ? track.tempoChanges : [{ time: 0, bpm: initialBpm }]
     const duration = Math.max(0, ...track.notes.map((note) => note.start + note.duration))
-    tempos.forEach((tempo, index) => {
-      const segmentEnd = tempos[index + 1]?.time ?? duration
-      const beatDuration = 60 / tempo.bpm
-      let beat = 0
-      for (let time = tempo.time; time < segmentEnd - 0.001; time += beatDuration) this.scheduleClick(startedAt + time, beat++ % 4 === 0)
+    const durationBeats = beatAtTime(track, duration)
+    const signatures = (track.timeSignatures?.length ? track.timeSignatures : [{ time: 0, numerator: 4, denominator: 4, clocksPerClick: 24 }])
+      .map((signature) => ({ ...signature, beat: beatAtTime(track, signature.time) }))
+      .filter((signature) => signature.beat <= durationBeats + 0.001)
+      .sort((a, b) => a.beat - b.beat)
+    signatures.forEach((signature, index) => {
+      const segmentEnd = Math.min(durationBeats, signatures[index + 1]?.beat ?? durationBeats)
+      const measureBeats = signature.numerator * 4 / signature.denominator
+      const pulseBeats = signature.clocksPerClick ? signature.clocksPerClick / 24 : (signature.numerator > 3 && signature.numerator % 3 === 0 ? 1.5 : 4 / signature.denominator)
+      for (let beat = signature.beat; beat < segmentEnd - 0.001; beat += pulseBeats) {
+        const positionInMeasure = (beat - signature.beat) % measureBeats
+        this.scheduleClick(startedAt + timeAtBeat(track, beat), positionInMeasure < 0.001 || measureBeats - positionInMeasure < 0.001)
+      }
     })
   }
 

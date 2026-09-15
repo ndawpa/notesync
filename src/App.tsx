@@ -71,7 +71,9 @@ export default function App() {
       const microphone = await MicrophoneInput.create()
       microphoneRef.current = microphone
       const initialBpm = trackRef.current.tempoChanges?.[0]?.bpm ?? trackRef.current.bpm ?? 60
-      const beatDuration = 60 / initialBpm
+      const initialSignature = trackRef.current.timeSignatures?.[0]
+      const pulseBeats = initialSignature?.clocksPerClick ? initialSignature.clocksPerClick / 24 : (initialSignature && initialSignature.numerator > 3 && initialSignature.numerator % 3 === 0 ? 1.5 : 4 / (initialSignature?.denominator ?? 4))
+      const beatDuration = 60 / initialBpm * pulseBeats
       const countStartedAt = microphone.context.currentTime + 0.15
       const preparationBeats = Math.max(countInBeats, initialCue ? initialCueBeats : 0)
       const preparationDuration = preparationBeats * beatDuration

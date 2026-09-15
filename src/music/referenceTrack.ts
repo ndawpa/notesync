@@ -4,6 +4,7 @@ import { midiToNoteName } from './noteUtils'
 export const DEFAULT_TRACK: ReferenceTrack = {
   name: 'Exercício C maior',
   bpm: 60,
+  timeSignatures: [{ time: 0, numerator: 4, denominator: 4, clocksPerClick: 24 }],
   notes: [
     { id: '1', pitch: 'C4', midi: 60, start: 0, duration: 1 },
     { id: '2', pitch: 'D4', midi: 62, start: 1, duration: 1 },
@@ -26,6 +27,7 @@ export function changeTrackBpm(track: ReferenceTrack, bpm: number): ReferenceTra
     bpm,
     notes: track.notes.map((note) => ({ ...note, start: note.start * timeScale, duration: note.duration * timeScale })),
     tempoChanges: track.tempoChanges?.map((tempo) => ({ time: tempo.time * timeScale, bpm: tempo.bpm * tempoScale })),
+    timeSignatures: track.timeSignatures?.map((signature) => ({ ...signature, time: signature.time * timeScale })),
   }
 }
 
@@ -40,5 +42,10 @@ export function parseReferenceTrack(value: unknown): ReferenceTrack {
     return { id: note.id ?? String(index + 1), pitch: note.pitch || midiToNoteName(Number(note.midi)), midi: Number(note.midi), start: Number(note.start), duration: Number(note.duration), lyric: typeof note.lyric === 'string' ? note.lyric : undefined }
   }).sort((a, b) => a.start - b.start)
   const tempoChanges = data.tempoChanges?.filter((tempo) => Number.isFinite(tempo.time) && Number.isFinite(tempo.bpm) && tempo.time >= 0 && tempo.bpm > 0).sort((a, b) => a.time - b.time)
-  return { name: data.name || 'Exercício carregado', bpm: data.bpm, tempoChanges, notes }
+  const validDenominators = [1, 2, 4, 8, 16, 32, 64, 128]
+  const importedSignatures = data.timeSignatures?.filter((signature) => Number.isFinite(signature.time) && Number.isInteger(signature.numerator) && Number.isInteger(signature.denominator) && signature.time >= 0 && signature.numerator > 0 && validDenominators.includes(signature.denominator)) ?? []
+  const timeSignatures = [{ time: 0, numerator: 4, denominator: 4, clocksPerClick: 24 }, ...importedSignatures]
+    .sort((a, b) => a.time - b.time)
+    .filter((signature, index, list) => index === list.length - 1 || signature.time !== list[index + 1].time)
+  return { name: data.name || 'Exercício carregado', bpm: data.bpm, tempoChanges, timeSignatures, notes }
 }

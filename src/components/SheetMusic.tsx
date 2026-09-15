@@ -25,6 +25,28 @@ function beatAtTime(track: ReferenceTrack, target: number) {
   return beats
 }
 
+function notationLayout(track: ReferenceTrack, totalBeats: number) {
+  const signatures = (track.timeSignatures?.length ? track.timeSignatures : [{ time: 0, numerator: 4, denominator: 4 }])
+    .map((signature) => ({ ...signature, beat: beatAtTime(track, signature.time) }))
+    .filter((signature) => signature.beat <= totalBeats + 0.001)
+    .sort((a, b) => a.beat - b.beat)
+  const bars: Array<{ beat: number; measure: number }> = []
+  let measure = 1
+  for (let index = 0; index < signatures.length; index++) {
+    const signature = signatures[index]
+    const endBeat = Math.min(totalBeats, signatures[index + 1]?.beat ?? totalBeats)
+    bars.push({ beat: signature.beat, measure })
+    const measureBeats = signature.numerator * 4 / signature.denominator
+    for (let beat = signature.beat + measureBeats; beat <= endBeat + 0.001; beat += measureBeats) {
+      if (beat >= endBeat - 0.001 && index < signatures.length - 1) break
+      measure += 1
+      bars.push({ beat, measure })
+    }
+    if (index < signatures.length - 1) measure += 1
+  }
+  return { signatures, bars: bars.filter((bar, index) => index === 0 || Math.abs(bar.beat - bars[index - 1].beat) > 0.001) }
+}
+
 function noteY(midi: number, clef: Clef) {
   return STAFF_BOTTOM - (midiToStaffStep(writtenMidiForClef(midi, clef)) - staffBottomStep(clef)) * 6
 }
@@ -55,6 +77,7 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, se
   const totalBeats = Math.max(4, beatAtTime(track, duration))
   const width = Math.max(760, Math.ceil(LEFT + totalBeats * BEAT_WIDTH + 50))
   const playheadX = LEFT + beatAtTime(track, elapsed) * BEAT_WIDTH
+  const notation = notationLayout(track, totalBeats)
   const clef = resolveClef(clefPreference, track.notes.map((note) => note.midi))
   const rests: Array<{ beat: number; name: string; symbol: string }> = []
   let cursorTime = 0
@@ -75,12 +98,13 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, se
   }, [elapsed, playheadX, running])
 
   return <section className="score-panel-view">
-    <div className="score-heading"><span>{clefLabel(clef)}{clefPreference === 'auto' ? ' · automática' : ''}</span><span>4/4 · duração quantizada pelo andamento</span></div>
+    <div className="score-heading"><span>{clefLabel(clef)}{clefPreference === 'auto' ? ' · automática' : ''}</span><span>{notation.signatures.map((signature) => `${signature.numerator}/${signature.denominator}`).join(' → ')} · duração quantizada pelo andamento</span></div>
     <div className="score-scroll" ref={scrollRef}>
       <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
         {clef === 'bass' ? <text className="bass-clef" x="17" y="82">𝄢</text> : <g><text className="treble-clef" x="15" y="91">𝄞</text>{clef === 'treble8vb' && <text className="octave-mark" x="31" y="111">8</text>}</g>}
         {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1={LEFT - 15} x2={width - 20} y1={y} y2={y} />)}
-        {Array.from({ length: Math.floor(totalBeats / 4) + 1 }, (_, index) => index * 4).map((beat) => <g key={beat}><line className="bar-line" x1={LEFT + beat * BEAT_WIDTH} x2={LEFT + beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{Math.floor(beat / 4) + 1}</text></g>)}
+        {notation.bars.map((bar) => <g key={`${bar.beat}-${bar.measure}`}><line className="bar-line" x1={LEFT + bar.beat * BEAT_WIDTH} x2={LEFT + bar.beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + bar.beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
+        {notation.signatures.map((signature, index) => <g key={`${signature.beat}-${signature.numerator}/${signature.denominator}`} className="time-signature" transform={`translate(${LEFT + signature.beat * BEAT_WIDTH + (index === 0 ? -11 : 8)} 0)`}><text x="0" y="62" textAnchor="middle">{signature.numerator}</text><text x="0" y="83" textAnchor="middle">{signature.denominator}</text></g>)}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
         {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
