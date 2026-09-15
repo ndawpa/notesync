@@ -125,7 +125,7 @@ export default function App() {
     {error && <p className="error" role="alert">{error}</p>}
     {countdown !== undefined && <div className="countdown" role="status"><span>Prepare-se</span><strong>{countdown}</strong></div>}
     <CurrentNote expected={expected} detected={detected} differenceCents={difference} volume={volume} />
-    <PitchVisualizer track={track} frames={frames} elapsed={elapsed} />
+    <PitchVisualizer track={track} frames={frames} elapsed={elapsed} running={running} />
     <progress className="progress" max={trackDuration(track)} value={Math.min(elapsed, trackDuration(track))} aria-label="Progresso do exercício" />
     {score && <ScorePanel score={score} />}
     {playReference && <p className="headphone-tip">🎧 Use fones de ouvido para que a referência não seja captada pelo microfone.</p>}
