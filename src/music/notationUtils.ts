@@ -58,3 +58,13 @@ export function chooseAutomaticClef(midis: number[]): Clef {
 }
 
 export const resolveClef = (preference: ClefPreference, midis: number[]): Clef => preference === 'auto' ? chooseAutomaticClef(midis) : preference
+
+export function ledgerLinePositions(noteY: number, staffTop: number, staffBottom: number, lineSpacing: number): number[] {
+  const positions: number[] = []
+  if (noteY > staffBottom) {
+    for (let y = staffBottom + lineSpacing; y <= noteY + 0.01; y += lineSpacing) positions.push(y)
+  } else if (noteY < staffTop) {
+    for (let y = staffTop - lineSpacing; y >= noteY - 0.01; y -= lineSpacing) positions.push(y)
+  }
+  return positions
+}

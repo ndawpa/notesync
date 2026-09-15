@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chooseAutomaticClef, closestRhythmFigure, midiToStaffStep, resolveClef, secondsToBeats, splitIntoRhythmFigures } from './notationUtils'
+import { chooseAutomaticClef, closestRhythmFigure, ledgerLinePositions, midiToStaffStep, resolveClef, secondsToBeats, splitIntoRhythmFigures } from './notationUtils'
 import { midiToDisplayName } from './noteUtils'
 
 describe('music notation utilities', () => {
@@ -27,5 +27,13 @@ describe('music notation utilities', () => {
     expect(chooseAutomaticClef([52, 55, 57, 60])).toBe('treble8vb')
     expect(chooseAutomaticClef([36, 40, 43, 48])).toBe('bass')
     expect(resolveClef('bass', [72])).toBe('bass')
+  })
+
+  it('does not draw a ledger line in the first space outside the staff', () => {
+    expect(ledgerLinePositions(96, 42, 90, 12)).toEqual([])
+    expect(ledgerLinePositions(102, 42, 90, 12)).toEqual([102])
+    expect(ledgerLinePositions(114, 42, 90, 12)).toEqual([102, 114])
+    expect(ledgerLinePositions(36, 42, 90, 12)).toEqual([])
+    expect(ledgerLinePositions(30, 42, 90, 12)).toEqual([30])
   })
 })

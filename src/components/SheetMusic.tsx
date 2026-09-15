@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { clefLabel, closestRhythmFigure, isSharpMidi, midiToStaffStep, resolveClef, splitIntoRhythmFigures, staffBottomStep, writtenMidiForClef, type Clef, type ClefPreference } from '../music/notationUtils'
+import { clefLabel, closestRhythmFigure, isSharpMidi, ledgerLinePositions, midiToStaffStep, resolveClef, splitIntoRhythmFigures, staffBottomStep, writtenMidiForClef, type Clef, type ClefPreference } from '../music/notationUtils'
 import { midiToDisplayName } from '../music/noteUtils'
 import { trackDuration } from '../music/referenceTrack'
 import type { NoteNaming, ReferenceNote, ReferenceTrack } from '../types/music'
@@ -35,9 +35,10 @@ function NoteGlyph({ note, track, naming, clef, selected, onSelect }: { note: Re
   const figure = closestRhythmFigure(beats)
   const x = LEFT + startBeat * BEAT_WIDTH
   const y = noteY(note.midi, clef)
+  const ledgerLines = ledgerLinePositions(y, STAFF_TOP, STAFF_BOTTOM, 12)
   const dotted = figure.name.includes('pontuada')
   return <g className={`score-note ${selected ? 'selected' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${midiToDisplayName(note.midi, naming === 'hidden' ? 'letter' : naming)}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
-    {(y < STAFF_TOP || y > STAFF_BOTTOM) && <line className="ledger-line" x1={x - 12} x2={x + 12} y1={y} y2={y} />}
+    {ledgerLines.map((lineY) => <line key={lineY} className="ledger-line" x1={x - 12} x2={x + 12} y1={lineY} y2={lineY} />)}
     {isSharpMidi(note.midi) && <text className="accidental" x={x - 18} y={y + 5}>♯</text>}
     <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`} />
     {figure.stem && <line className="note-stem" x1={x + 7} x2={x + 7} y1={y} y2={y - 31} />}
