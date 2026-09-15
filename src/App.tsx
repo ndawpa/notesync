@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MicrophoneInput } from './audio/microphone'
 import { ReferencePlayer } from './audio/referencePlayer'
+import { recordingTo16kMono, SolfegeRecognizer } from './audio/solfegeRecognizer'
 import { detectPitchYin, medianFrequency, rootMeanSquare } from './audio/pitchDetector'
 import { Controls } from './components/Controls'
 import { CurrentNote } from './components/CurrentNote'
@@ -9,10 +10,12 @@ import { SheetMusic } from './components/SheetMusic'
 import { MusicViewControls } from './components/MusicViewControls'
 import { NoteEditor } from './components/NoteEditor'
 import { ScorePanel } from './components/ScorePanel'
+import { SolfegeScorePanel } from './components/SolfegeScorePanel'
 import { frequencyDifferenceInCents, frequencyToMidi, frequencyToMidiFloat, midiToFrequency, midiToNoteName } from './music/noteUtils'
 import { changeTrackBpm, DEFAULT_TRACK, noteAtTime, parseReferenceTrack, trackDuration } from './music/referenceTrack'
 import { parseMidiFile } from './music/midiParser'
 import { calculateSessionScore, type SessionScore } from './scoring/overallScore'
+import { scoreSolfege, type SolfegeScore } from './scoring/solfegeScoring'
 import type { EvaluatedFrame, PitchFrame } from './types/audio'
 import type { MusicView, NoteNaming, ReferenceNote, ReferenceTrack } from './types/music'
 import type { ClefPreference, KeySignaturePreference } from './music/notationUtils'
@@ -25,6 +28,10 @@ export default function App() {
   const [detected, setDetected] = useState<PitchFrame>()
   const [frames, setFrames] = useState<EvaluatedFrame[]>([])
   const [score, setScore] = useState<SessionScore>()
+  const [solfegeScore, setSolfegeScore] = useState<SolfegeScore>()
+  const [evaluationMode, setEvaluationMode] = useState<'pitch-rhythm' | 'solfege'>('pitch-rhythm')
+  const [processingSolfege, setProcessingSolfege] = useState(false)
+  const [solfegeStatus, setSolfegeStatus] = useState('')
   const [error, setError] = useState('')
   const [playReference, setPlayReference] = useState(true)
   const [referenceVolume, setReferenceVolume] = useState(0.35)
@@ -41,6 +48,7 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const microphoneRef = useRef<MicrophoneInput | undefined>(undefined)
   const referencePlayerRef = useRef<ReferencePlayer | undefined>(undefined)
+  const solfegeRecognizerRef = useRef<SolfegeRecognizer | undefined>(undefined)
   const animationRef = useRef<number | undefined>(undefined)
   const framesRef = useRef<EvaluatedFrame[]>([])
   const trackRef = useRef(track)
@@ -49,7 +57,7 @@ export default function App() {
   const lastRenderRef = useRef(0)
 
   useEffect(() => { trackRef.current = track }, [track])
-  useEffect(() => () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); referencePlayerRef.current?.stop(); void microphoneRef.current?.close() }, [])
+  useEffect(() => () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); referencePlayerRef.current?.stop(); solfegeRecognizerRef.current?.terminate(); void microphoneRef.current?.close() }, [])
 
   const finish = async () => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current)
@@ -59,18 +67,36 @@ export default function App() {
     referencePlayerRef.current = undefined
     setRunning(false)
     setCountdown(undefined)
-    setScore(calculateSessionScore(trackRef.current, completedFrames))
     const microphone = microphoneRef.current
     microphoneRef.current = undefined
+    const recording = evaluationMode === 'solfege' ? await microphone?.stopRecording() : undefined
     await microphone?.close()
+    if (evaluationMode === 'pitch-rhythm') {
+      setScore(calculateSessionScore(trackRef.current, completedFrames))
+      return
+    }
+    if (!recording?.size) { setError('Nenhum áudio foi capturado para avaliar o solfejo.'); return }
+    setProcessingSolfege(true)
+    setSolfegeStatus('Preparando o áudio…')
+    try {
+      const audio = await recordingTo16kMono(recording)
+      solfegeRecognizerRef.current ??= new SolfegeRecognizer()
+      const transcript = await solfegeRecognizerRef.current.recognize(audio, setSolfegeStatus)
+      setSolfegeScore(scoreSolfege(trackRef.current, transcript))
+    } catch (reason) {
+      setError(reason instanceof Error ? `Não foi possível avaliar o solfejo: ${reason.message}` : 'Não foi possível avaliar o solfejo.')
+    } finally {
+      setProcessingSolfege(false); setSolfegeStatus('')
+    }
   }
 
   const start = async () => {
-    setError(''); setScore(undefined); setFrames([]); setElapsed(0); setDetected(undefined)
+    setError(''); setScore(undefined); setSolfegeScore(undefined); setFrames([]); setElapsed(0); setDetected(undefined)
     framesRef.current = []; historyRef.current = []; lastAnalysisRef.current = 0; lastRenderRef.current = 0
     try {
       const microphone = await MicrophoneInput.create()
       microphoneRef.current = microphone
+      if (evaluationMode === 'solfege') microphone.startRecording()
       const initialBpm = trackRef.current.tempoChanges?.[0]?.bpm ?? trackRef.current.bpm ?? 60
       const initialSignature = trackRef.current.timeSignatures?.[0]
       const pulseBeats = initialSignature?.clocksPerClick ? initialSignature.clocksPerClick / 24 : (initialSignature && initialSignature.numerator > 3 && initialSignature.numerator % 3 === 0 ? 1.5 : 4 / (initialSignature?.denominator ?? 4))
@@ -117,10 +143,15 @@ export default function App() {
         animationRef.current = requestAnimationFrame(analyse)
       }
       animationRef.current = requestAnimationFrame(analyse)
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível acessar o microfone.'); setRunning(false) }
+    } catch (reason) {
+      referencePlayerRef.current?.stop(); referencePlayerRef.current = undefined
+      const microphone = microphoneRef.current; microphoneRef.current = undefined
+      await microphone?.close()
+      setError(reason instanceof Error ? reason.message : 'Não foi possível acessar o microfone.'); setRunning(false)
+    }
   }
 
-  const reset = () => { setElapsed(0); setFrames([]); setScore(undefined); setDetected(undefined); setVolume(0); setCountdown(undefined); framesRef.current = [] }
+  const reset = () => { setElapsed(0); setFrames([]); setScore(undefined); setSolfegeScore(undefined); setDetected(undefined); setVolume(0); setCountdown(undefined); setError(''); framesRef.current = [] }
   const expected = noteAtTime(track, elapsed)
   const currentEvaluated = frames.at(-1)
   const difference = currentEvaluated && currentEvaluated.expectedNoteId === expected?.id ? currentEvaluated.differenceCents : undefined
@@ -155,12 +186,14 @@ export default function App() {
   }
   const selectNote = (id: string) => { if (!running) setSelectedNoteId(id) }
   const changeBpm = (bpm: number) => { setTrack((current) => changeTrackBpm(current, bpm)); reset() }
+  const changeEvaluationMode = (mode: 'pitch-rhythm' | 'solfege') => { setEvaluationMode(mode); if (mode === 'solfege') setNoteNaming('solfege'); reset() }
   const selectedNote = track.notes.find((note) => note.id === selectedNoteId)
 
   return <main>
-    <header><div><p className="eyebrow">Treinamento vocal</p><h1>{track.name}</h1><p>{track.bpm ? `${track.bpm} BPM · ` : ''}{track.notes.length} notas · {trackDuration(track).toFixed(1)} segundos</p></div><Controls running={running} hasResults={Boolean(score)} playReference={playReference} referenceVolume={referenceVolume} metronome={metronome} initialCue={initialCue} initialCueBeats={initialCueBeats} countInBeats={countInBeats} onLoad={() => inputRef.current?.click()} onStart={() => void start()} onStop={() => void finish()} onReset={reset} onPlayReferenceChange={setPlayReference} onReferenceVolumeChange={setReferenceVolume} onMetronomeChange={setMetronome} onInitialCueChange={setInitialCue} onInitialCueBeatsChange={setInitialCueBeats} onCountInBeatsChange={setCountInBeats} /></header>
+    <header><div><p className="eyebrow">Treinamento vocal</p><h1>{track.name}</h1><p>{track.bpm ? `${track.bpm} BPM · ` : ''}{track.notes.length} notas · {trackDuration(track).toFixed(1)} segundos</p></div><Controls running={running} processing={processingSolfege} hasResults={Boolean(score || solfegeScore)} evaluationMode={evaluationMode} playReference={playReference} referenceVolume={referenceVolume} metronome={metronome} initialCue={initialCue} initialCueBeats={initialCueBeats} countInBeats={countInBeats} onLoad={() => inputRef.current?.click()} onStart={() => void start()} onStop={() => void finish()} onReset={reset} onEvaluationModeChange={changeEvaluationMode} onPlayReferenceChange={setPlayReference} onReferenceVolumeChange={setReferenceVolume} onMetronomeChange={setMetronome} onInitialCueChange={setInitialCue} onInitialCueBeatsChange={setInitialCueBeats} onCountInBeatsChange={setCountInBeats} /></header>
     <input ref={inputRef} type="file" accept=".mid,.midi,.json,audio/midi,audio/x-midi,application/json" hidden onChange={(event) => void loadFile(event.target.files?.[0])} />
     {error && <p className="error" role="alert">{error}</p>}
+    {processingSolfege && <p className="processing" role="status"><span className="spinner" />{solfegeStatus}</p>}
     {countdown !== undefined && <div className="countdown" role="status"><span>Prepare-se</span><strong>{countdown}</strong></div>}
     <CurrentNote expected={expected} detected={detected} differenceCents={difference} volume={volume} naming={noteNaming} />
     <MusicViewControls view={musicView} naming={noteNaming} clef={clefPreference} keySignature={keySignaturePreference} bpm={track.tempoChanges?.[0]?.bpm ?? track.bpm ?? 60} hasLyrics={track.notes.some((note) => Boolean(note.lyric?.trim()))} disabled={running} onViewChange={setMusicView} onNamingChange={setNoteNaming} onClefChange={setClefPreference} onKeySignatureChange={setKeySignaturePreference} onBpmChange={changeBpm} onAddNote={addNote} />
@@ -168,7 +201,8 @@ export default function App() {
     <progress className="progress" max={trackDuration(track)} value={Math.min(elapsed, trackDuration(track))} aria-label="Progresso do exercício" />
     {selectedNote && !running && <NoteEditor key={selectedNote.id} note={selectedNote} naming={noteNaming} canDelete={track.notes.length > 1} onSave={saveNote} onDelete={deleteNote} onClose={() => setSelectedNoteId(undefined)} />}
     {score && <ScorePanel score={score} />}
+    {solfegeScore && <SolfegeScorePanel score={solfegeScore} />}
     {playReference && <p className="headphone-tip">🎧 Use fones de ouvido para que a referência não seja captada pelo microfone.</p>}
-    <p className="privacy">O áudio é analisado no seu navegador e não é gravado nem enviado.</p>
+    <p className="privacy">{evaluationMode === 'solfege' ? 'No modo solfejo, o áudio é gravado temporariamente e processado localmente; ele não é enviado a um backend nem armazenado após a avaliação.' : 'O áudio é analisado no seu navegador e não é gravado nem enviado.'}</p>
   </main>
 }

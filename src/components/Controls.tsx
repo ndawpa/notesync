@@ -1,6 +1,8 @@
 interface Props {
   running: boolean
+  processing: boolean
   hasResults: boolean
+  evaluationMode: 'pitch-rhythm' | 'solfege'
   playReference: boolean
   referenceVolume: number
   metronome: boolean
@@ -11,6 +13,7 @@ interface Props {
   onStart: () => void
   onStop: () => void
   onReset: () => void
+  onEvaluationModeChange: (mode: 'pitch-rhythm' | 'solfege') => void
   onPlayReferenceChange: (enabled: boolean) => void
   onReferenceVolumeChange: (volume: number) => void
   onMetronomeChange: (enabled: boolean) => void
@@ -19,15 +22,16 @@ interface Props {
   onCountInBeatsChange: (beats: number) => void
 }
 
-export function Controls({ running, hasResults, playReference, referenceVolume, metronome, initialCue, initialCueBeats, countInBeats, onLoad, onStart, onStop, onReset, onPlayReferenceChange, onReferenceVolumeChange, onMetronomeChange, onInitialCueChange, onInitialCueBeatsChange, onCountInBeatsChange }: Props) {
+export function Controls({ running, processing, hasResults, evaluationMode, playReference, referenceVolume, metronome, initialCue, initialCueBeats, countInBeats, onLoad, onStart, onStop, onReset, onEvaluationModeChange, onPlayReferenceChange, onReferenceVolumeChange, onMetronomeChange, onInitialCueChange, onInitialCueBeatsChange, onCountInBeatsChange }: Props) {
   return <div className="control-area">
     <div className="controls">
-      <button onClick={onLoad} disabled={running}>Carregar exercício</button>
-      <button className="primary" onClick={onStart} disabled={running}>Iniciar</button>
+      <button onClick={onLoad} disabled={running || processing}>Carregar exercício</button>
+      <button className="primary" onClick={onStart} disabled={running || processing}>Iniciar</button>
       <button onClick={onStop} disabled={!running}>Parar</button>
-      <button onClick={onReset} disabled={running && !hasResults}>Reiniciar</button>
+      <button onClick={onReset} disabled={processing || (running && !hasResults)}>Reiniciar</button>
     </div>
     <div className="reference-controls">
+      <label>Modo de avaliação<select value={evaluationMode} disabled={running || processing} onChange={(event) => onEvaluationModeChange(event.target.value as 'pitch-rhythm' | 'solfege')}><option value="pitch-rhythm">Afinação e ritmo</option><option value="solfege">Solfejo</option></select></label>
       <label><input type="checkbox" checked={playReference} disabled={running} onChange={(event) => onPlayReferenceChange(event.target.checked)} /> Tocar referência</label>
       <label><input type="checkbox" checked={metronome} disabled={running} onChange={(event) => onMetronomeChange(event.target.checked)} /> Metrônomo</label>
       <label><input type="checkbox" checked={initialCue} disabled={running} onChange={(event) => onInitialCueChange(event.target.checked)} /> Tom inicial</label>

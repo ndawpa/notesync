@@ -2,6 +2,8 @@
 
 Protótipo local de treinamento vocal com React, TypeScript, Web Audio API e detecção de pitch YIN implementada no projeto.
 
+Além da avaliação de afinação e ritmo, há um modo opcional e independente de solfejo. Ele grava somente a sessão atual, executa o Whisper Tiny localmente em um Web Worker e compara a transcrição com as sílabas esperadas em solfejo fixo (C = Dó). O áudio não é enviado a um backend.
+
 A melodia de referência é sintetizada durante o exercício e pode ser ligada, desligada ou ter seu volume ajustado antes de iniciar. Use fones para evitar que o microfone capture a própria referência.
 
 O exercício também oferece metrônomo sincronizado ao andamento e à fórmula de compasso (incluindo mudanças encontradas no MIDI), tom inicial baseado na primeira nota e contagem preparatória configurável.
@@ -28,6 +30,8 @@ npm run dev
 ```
 
 Abra o endereço indicado pelo Vite, permita o microfone e pressione **Iniciar**. O acesso ao microfone exige `localhost` ou HTTPS.
+
+No modo **Solfejo**, o modelo de reconhecimento é baixado do Hugging Face e guardado no cache do navegador na primeira avaliação. Esse primeiro processamento pode demorar e requer conexão; as execuções seguintes reutilizam o modelo armazenado. O reconhecimento de sílabas cantadas é experimental e funciona melhor com fones de ouvido e articulação clara no início de cada nota.
 
 ## Publicar
 
