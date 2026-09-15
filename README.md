@@ -12,6 +12,8 @@ O eixo MIDI e o piano virtual permanecem fixos durante a rolagem; a tecla espera
 
 O usuário pode alternar entre a timeline e uma partitura simplificada em 4/4, escolher entre cifras (`C`, `D`, `E`) e nomes em português (`Dó`, `Ré`, `Mi`) e editar pitch, início e duração ao selecionar uma nota. As alterações permanecem na sessão atual do navegador.
 
+Na partitura, a clave pode ser escolhida automaticamente ou definida manualmente como Sol, Sol 8vb ou Fá. O modo automático minimiza notas fora do pentagrama e linhas suplementares sem alterar a altura sonora usada na avaliação.
+
 ## Executar
 
 ```bash

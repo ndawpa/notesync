@@ -15,6 +15,7 @@ import { parseMidiFile } from './music/midiParser'
 import { calculateSessionScore, type SessionScore } from './scoring/overallScore'
 import type { EvaluatedFrame, PitchFrame } from './types/audio'
 import type { MusicView, NoteNaming, ReferenceNote, ReferenceTrack } from './types/music'
+import type { ClefPreference } from './music/notationUtils'
 
 export default function App() {
   const [track, setTrack] = useState<ReferenceTrack>(DEFAULT_TRACK)
@@ -33,6 +34,7 @@ export default function App() {
   const [countInBeats, setCountInBeats] = useState(4)
   const [musicView, setMusicView] = useState<MusicView>('timeline')
   const [noteNaming, setNoteNaming] = useState<NoteNaming>('letter')
+  const [clefPreference, setClefPreference] = useState<ClefPreference>('auto')
   const [selectedNoteId, setSelectedNoteId] = useState<string>()
   const [countdown, setCountdown] = useState<number>()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -156,8 +158,8 @@ export default function App() {
     {error && <p className="error" role="alert">{error}</p>}
     {countdown !== undefined && <div className="countdown" role="status"><span>Prepare-se</span><strong>{countdown}</strong></div>}
     <CurrentNote expected={expected} detected={detected} differenceCents={difference} volume={volume} naming={noteNaming} />
-    <MusicViewControls view={musicView} naming={noteNaming} disabled={running} onViewChange={setMusicView} onNamingChange={setNoteNaming} onAddNote={addNote} />
-    {musicView === 'timeline' ? <PitchVisualizer track={track} frames={frames} elapsed={elapsed} running={running} naming={noteNaming} selectedNoteId={selectedNoteId} onSelectNote={selectNote} /> : <SheetMusic track={track} elapsed={elapsed} running={running} naming={noteNaming} selectedNoteId={selectedNoteId} onSelectNote={selectNote} />}
+    <MusicViewControls view={musicView} naming={noteNaming} clef={clefPreference} disabled={running} onViewChange={setMusicView} onNamingChange={setNoteNaming} onClefChange={setClefPreference} onAddNote={addNote} />
+    {musicView === 'timeline' ? <PitchVisualizer track={track} frames={frames} elapsed={elapsed} running={running} naming={noteNaming} selectedNoteId={selectedNoteId} onSelectNote={selectNote} /> : <SheetMusic track={track} elapsed={elapsed} running={running} naming={noteNaming} clefPreference={clefPreference} selectedNoteId={selectedNoteId} onSelectNote={selectNote} />}
     <progress className="progress" max={trackDuration(track)} value={Math.min(elapsed, trackDuration(track))} aria-label="Progresso do exercício" />
     {selectedNote && !running && <NoteEditor key={selectedNote.id} note={selectedNote} naming={noteNaming} canDelete={track.notes.length > 1} onSave={saveNote} onDelete={deleteNote} onClose={() => setSelectedNoteId(undefined)} />}
     {score && <ScorePanel score={score} />}

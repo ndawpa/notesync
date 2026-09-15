@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { closestRhythmFigure, isSharpMidi, midiToStaffStep, splitIntoRhythmFigures } from '../music/notationUtils'
+import { clefLabel, closestRhythmFigure, isSharpMidi, midiToStaffStep, resolveClef, splitIntoRhythmFigures, staffBottomStep, writtenMidiForClef, type Clef, type ClefPreference } from '../music/notationUtils'
 import { midiToDisplayName } from '../music/noteUtils'
 import { trackDuration } from '../music/referenceTrack'
 import type { NoteNaming, ReferenceNote, ReferenceTrack } from '../types/music'
 
-interface Props { track: ReferenceTrack; elapsed: number; running: boolean; naming: NoteNaming; selectedNoteId?: string; onSelectNote: (id: string) => void }
+interface Props { track: ReferenceTrack; elapsed: number; running: boolean; naming: NoteNaming; clefPreference: ClefPreference; selectedNoteId?: string; onSelectNote: (id: string) => void }
 
 const BEAT_WIDTH = 78
 const LEFT = 72
@@ -25,17 +25,16 @@ function beatAtTime(track: ReferenceTrack, target: number) {
   return beats
 }
 
-function noteY(midi: number) {
-  const e4Step = midiToStaffStep(64)
-  return STAFF_BOTTOM - (midiToStaffStep(midi) - e4Step) * 6
+function noteY(midi: number, clef: Clef) {
+  return STAFF_BOTTOM - (midiToStaffStep(writtenMidiForClef(midi, clef)) - staffBottomStep(clef)) * 6
 }
 
-function NoteGlyph({ note, track, naming, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; selected: boolean; onSelect: () => void }) {
+function NoteGlyph({ note, track, naming, clef, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; selected: boolean; onSelect: () => void }) {
   const startBeat = beatAtTime(track, note.start)
   const beats = beatAtTime(track, note.start + note.duration) - startBeat
   const figure = closestRhythmFigure(beats)
   const x = LEFT + startBeat * BEAT_WIDTH
-  const y = noteY(note.midi)
+  const y = noteY(note.midi, clef)
   const dotted = figure.name.includes('pontuada')
   return <g className={`score-note ${selected ? 'selected' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${midiToDisplayName(note.midi, naming)}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
     {(y < STAFF_TOP || y > STAFF_BOTTOM) && <line className="ledger-line" x1={x - 12} x2={x + 12} y1={y} y2={y} />}
@@ -48,12 +47,13 @@ function NoteGlyph({ note, track, naming, selected, onSelect }: { note: Referenc
   </g>
 }
 
-export function SheetMusic({ track, elapsed, running, naming, selectedNoteId, onSelectNote }: Props) {
+export function SheetMusic({ track, elapsed, running, naming, clefPreference, selectedNoteId, onSelectNote }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const duration = trackDuration(track)
   const totalBeats = Math.max(4, beatAtTime(track, duration))
   const width = Math.max(760, Math.ceil(LEFT + totalBeats * BEAT_WIDTH + 50))
   const playheadX = LEFT + beatAtTime(track, elapsed) * BEAT_WIDTH
+  const clef = resolveClef(clefPreference, track.notes.map((note) => note.midi))
   const rests: Array<{ beat: number; name: string; symbol: string }> = []
   let cursorTime = 0
   for (const note of [...track.notes].sort((a, b) => a.start - b.start)) {
@@ -73,14 +73,14 @@ export function SheetMusic({ track, elapsed, running, naming, selectedNoteId, on
   }, [elapsed, playheadX, running])
 
   return <section className="score-panel-view">
-    <div className="score-heading"><span>Clave de Sol</span><span>4/4 · duração quantizada pelo andamento</span></div>
+    <div className="score-heading"><span>{clefLabel(clef)}{clefPreference === 'auto' ? ' · automática' : ''}</span><span>4/4 · duração quantizada pelo andamento</span></div>
     <div className="score-scroll" ref={scrollRef}>
       <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
-        <text className="treble-clef" x="15" y="91">𝄞</text>
+        {clef === 'bass' ? <text className="bass-clef" x="17" y="82">𝄢</text> : <g><text className="treble-clef" x="15" y="91">𝄞</text>{clef === 'treble8vb' && <text className="octave-mark" x="31" y="111">8</text>}</g>}
         {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1={LEFT - 15} x2={width - 20} y1={y} y2={y} />)}
         {Array.from({ length: Math.floor(totalBeats / 4) + 1 }, (_, index) => index * 4).map((beat) => <g key={beat}><line className="bar-line" x1={LEFT + beat * BEAT_WIDTH} x2={LEFT + beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{Math.floor(beat / 4) + 1}</text></g>)}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
-        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
+        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
       </svg>
     </div>

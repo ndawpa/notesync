@@ -32,6 +32,8 @@ header p { margin: 0; color: #99a7bd; }
 .music-view-controls legend { margin-bottom: 4px; color: #94a3b8; font-size: .72rem; }
 .music-view-controls button { padding: 6px 10px; }
 .music-view-controls button.selected { border-color: #43d9ad; color: #d8fff3; background: #176654; }
+.clef-control { display: flex; flex-direction: column; gap: 4px; color: #94a3b8; font-size: .72rem; }
+.clef-control select { min-width: 120px; padding: 6px 8px; color: #e8edf5; background: #202b41; border: 1px solid #43516b; border-radius: 6px; }
 .status.afinado, .status.aceitável { color: #43d9ad; }
 .status.desafinado { color: #ffc857; }
 .status.erro-significativo { color: #ff6b7a; }
@@ -70,6 +72,8 @@ header p { margin: 0; color: #99a7bd; }
 .bar-line { stroke-width: 1.5; }
 .ledger-line { stroke-width: 1.5; }
 .treble-clef { fill: #111; font-family: serif; font-size: 64px; }
+.bass-clef { fill: #111; font-family: serif; font-size: 47px; }
+.octave-mark { fill: #111; font: 700 12px serif; }
 .measure-number, .rhythm-name { fill: #697386; font-size: 9px; }
 .score-note { cursor: pointer; outline: none; }
 .note-head { fill: #f8f5ed; stroke: #111; stroke-width: 1.7; }

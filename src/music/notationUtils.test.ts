@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { closestRhythmFigure, midiToStaffStep, secondsToBeats, splitIntoRhythmFigures } from './notationUtils'
+import { chooseAutomaticClef, closestRhythmFigure, midiToStaffStep, resolveClef, secondsToBeats, splitIntoRhythmFigures } from './notationUtils'
 import { midiToDisplayName } from './noteUtils'
 
 describe('music notation utilities', () => {
@@ -17,5 +17,12 @@ describe('music notation utilities', () => {
   it('splits rests and maps pitch vertically', () => {
     expect(splitIntoRhythmFigures(5).map((figure) => figure.name)).toEqual(['semibreve', 'semínima'])
     expect(midiToStaffStep(67) - midiToStaffStep(64)).toBe(2)
+  })
+
+  it('selects a clef that keeps the melody near the staff', () => {
+    expect(chooseAutomaticClef([67, 69, 72, 74])).toBe('treble')
+    expect(chooseAutomaticClef([52, 55, 57, 60])).toBe('treble8vb')
+    expect(chooseAutomaticClef([36, 40, 43, 48])).toBe('bass')
+    expect(resolveClef('bass', [72])).toBe('bass')
   })
 })
