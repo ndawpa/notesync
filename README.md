@@ -20,7 +20,7 @@ Na partitura, a clave pode ser escolhida automaticamente ou definida manualmente
 
 A armadura pode ser importada automaticamente do evento MIDI `Key Signature` (`0x59`), removida ou escolhida manualmente entre tonalidades maiores e menores. Sem armadura, os acidentes aparecem junto às notas; com armadura, os acidentes já previstos por ela não são repetidos. A partitura também reconhece a colcheia pontuada.
 
-A clave e a armadura permanecem fixas à esquerda durante a rolagem da partitura. Quando o MIDI contém uma mudança de armadura, o indicador fixo acompanha a armadura ativa na posição atual da reprodução.
+A clave, a armadura e a fórmula de compasso permanecem fixas à esquerda durante a rolagem da partitura. Quando o MIDI contém mudanças de armadura ou de compasso, o indicador fixo acompanha os valores ativos na posição atual da reprodução.
 
 As barras de compasso mantêm um pequeno espaçamento antes das notas do primeiro tempo, evitando que a cabeça da nota fique desenhada sobre a barra.
 

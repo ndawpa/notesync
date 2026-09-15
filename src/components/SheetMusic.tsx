@@ -8,7 +8,7 @@ interface Props { track: ReferenceTrack; elapsed: number; running: boolean; nami
 
 const BEAT_WIDTH = 78
 const LEFT = 38
-const GUIDE_WIDTH = 140
+const GUIDE_WIDTH = 180
 const BAR_NOTE_GAP = 14
 const STAFF_TOP = 42
 const STAFF_BOTTOM = 90
@@ -117,6 +117,8 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
   const keys = resolvedKeys(track, keySignaturePreference).map((key) => ({ ...key, beat: beatAtTime(track, key.time) }))
   const keyAtTime = (time: number) => { let active = keys[0]; for (const key of keys) { if (key.time <= time + 0.001) active = key; else break } return active }
   const activeKey = keyAtTime(elapsed)
+  const signatureAtTime = (time: number) => { let active = notation.signatures[0]; for (const signature of notation.signatures) { if (signature.time <= time + 0.001) active = signature; else break } return active }
+  const activeSignature = signatureAtTime(elapsed)
   const rhythmicNotes = [...track.notes].sort((a, b) => a.start - b.start).map((note) => {
     const startBeat = beatAtTime(track, note.start)
     const endBeat = beatAtTime(track, note.start + note.duration)
@@ -163,11 +165,12 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
   return <section className="score-panel-view">
     <div className="score-heading"><span>{clefLabel(clef)}{clefPreference === 'auto' ? ' · automática' : ''}</span><span>{notation.signatures.map((signature) => `${signature.numerator}/${signature.denominator}`).join(' → ')} · duração quantizada pelo andamento</span></div>
     <div className="score-body">
-      <svg className="score-guide" width={GUIDE_WIDTH} height={HEIGHT} viewBox={`0 0 ${GUIDE_WIDTH} ${HEIGHT}`} aria-label={`Indicador fixo: ${clefLabel(clef)}`}>
+      <svg className="score-guide" width={GUIDE_WIDTH} height={HEIGHT} viewBox={`0 0 ${GUIDE_WIDTH} ${HEIGHT}`} aria-label={`Indicador fixo: ${clefLabel(clef)}, ${activeSignature.numerator}/${activeSignature.denominator}`}>
         <rect width={GUIDE_WIDTH} height={HEIGHT} />
         {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="0" x2={GUIDE_WIDTH} y1={y} y2={y} />)}
         {clef === 'bass' ? <text className="bass-clef" x="17" y="82">𝄢</text> : <g><text className="treble-clef" x="15" y="91">𝄞</text>{clef === 'treble8vb' && <text className="octave-mark" x="31" y="111">8</text>}</g>}
         <g className="key-signature" transform="translate(65 0)">{keySignatureYs(clef, activeKey.fifths).map((y, index) => <text key={index} x={index * 10} y={y + 6}>{activeKey.fifths > 0 ? '♯' : '♭'}</text>)}</g>
+        <g className="time-signature" transform={`translate(${79 + Math.abs(activeKey.fifths) * 10} 0)`}><text x="0" y="62" textAnchor="middle">{activeSignature.numerator}</text><text x="0" y="83" textAnchor="middle">{activeSignature.denominator}</text></g>
       </svg>
       <div className="score-scroll" ref={scrollRef}>
         <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
@@ -177,7 +180,6 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
           const barX = boundaryX - BAR_NOTE_GAP
           return <g key={`${bar.beat}-${bar.measure}`}>{bar.beat > 0.001 && <line className="bar-line" x1={barX} x2={barX} y1={STAFF_TOP} y2={STAFF_BOTTOM} />}<text className="measure-number" x={bar.beat > 0.001 ? barX + 4 : boundaryX} y={STAFF_TOP - 9}>{bar.measure}</text></g>
         })}
-        {notation.signatures.map((signature, index) => <g key={`${signature.beat}-${signature.numerator}/${signature.denominator}`} className="time-signature" transform={`translate(${LEFT + signature.beat * BEAT_WIDTH + (index === 0 ? -11 : 8)} 0)`}><text x="0" y="62" textAnchor="middle">{signature.numerator}</text><text x="0" y="83" textAnchor="middle">{signature.denominator}</text></g>)}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
         {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
         {beamGroups.map((group, groupIndex) => <g className="note-beams" key={`beam-${groupIndex}`}>
