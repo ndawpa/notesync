@@ -5,6 +5,9 @@ export interface ReferenceNote {
   start: number
   duration: number
   lyric?: string
+  tieStart?: boolean
+  tieStop?: boolean
+  tuplet?: { actual: number; normal: number }
 }
 
 export interface ReferenceTrack {
@@ -30,4 +33,5 @@ export interface KeySignatureChange {
 }
 
 export type MusicView = 'timeline' | 'score'
+export type ScoreLayout = 'continuous' | 'systems'
 export type NoteNaming = 'letter' | 'solfege' | 'lyrics' | 'hidden'

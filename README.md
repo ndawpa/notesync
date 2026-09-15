@@ -2,7 +2,7 @@
 
 Protótipo local de treinamento vocal com React, TypeScript, Web Audio API e detecção de pitch YIN implementada no projeto.
 
-Além da avaliação de afinação e ritmo, há um modo opcional e independente de solfejo. Ele grava somente a sessão atual, executa o Whisper Tiny localmente em um Web Worker e compara a transcrição com as sílabas esperadas em solfejo fixo (C = Dó). O áudio não é enviado a um backend.
+Além da avaliação de afinação e ritmo, há um modo opcional e independente de solfejo. Ele grava somente a sessão atual, executa o Whisper Tiny localmente em um Web Worker e compara palavras e timestamps com as sílabas esperadas. É possível usar Dó fixo ou Dó móvel e pronunciar acidentes como “Dó sustenido”. O áudio não é enviado a um backend.
 
 A melodia de referência é sintetizada durante o exercício e pode ser ligada, desligada ou ter seu volume ajustado antes de iniciar. Use fones para evitar que o microfone capture a própria referência.
 
@@ -26,7 +26,22 @@ A armadura pode ser importada automaticamente do evento MIDI `Key Signature` (`0
 
 A clave, a armadura e a fórmula de compasso permanecem fixas à esquerda durante a rolagem da partitura. Quando o MIDI contém mudanças de armadura ou de compasso, o indicador fixo acompanha os valores ativos na posição atual da reprodução.
 
+A partitura oferece os layouts **Rolagem** e **Sistemas**. A notação trata hastes para cima/baixo, acidentes válidos dentro do compasso, ligaduras e indicações de quiálteras importadas do MusicXML, além das figuras e pausas pontuadas já suportadas.
+
 As barras de compasso mantêm um pequeno espaçamento antes das notas do primeiro tempo, evitando que a cabeça da nota fique desenhada sobre a barra.
+
+## Recursos de prática
+
+- escolha da pista/voz em MIDI e das partes/vozes em MusicXML, adequada a materiais SATB monofônicos;
+- repetição contínua de um intervalo de compassos;
+- andamento progressivo, com aumento de 5 pontos percentuais após score mínimo de 85%;
+- transposição manual e sugestão automática para soprano, contralto, tenor ou baixo;
+- correção contextual opcional de erros de oitava do detector;
+- seleção de microfone, threshold de ruído e compensação de latência, com calibração inicial baseada no dispositivo e no ruído ambiente;
+- relatório por nota e compasso, com afinação, entrada e duração, exportável em CSV;
+- exercício editado e preferências salvos no armazenamento local do navegador.
+
+A detecção YIN roda preferencialmente em um `AudioWorklet`, fora da thread de renderização da interface, e volta automaticamente para o analisador tradicional em navegadores sem suporte.
 
 ## Executar
 
@@ -37,7 +52,7 @@ npm run dev
 
 Abra o endereço indicado pelo Vite, permita o microfone e pressione **Iniciar**. O acesso ao microfone exige `localhost` ou HTTPS.
 
-No modo **Solfejo**, o modelo de reconhecimento é baixado do Hugging Face e guardado no cache do navegador na primeira avaliação. Esse primeiro processamento pode demorar e requer conexão; as execuções seguintes reutilizam o modelo armazenado. O reconhecimento de sílabas cantadas é experimental e funciona melhor com fones de ouvido e articulação clara no início de cada nota.
+No modo **Solfejo**, use **Preparar reconhecimento** antes do exercício para baixar o modelo do Hugging Face e guardá-lo no cache do navegador. Esse primeiro processamento pode demorar e requer conexão; as execuções seguintes reutilizam o modelo armazenado. O reconhecimento de sílabas cantadas é experimental e funciona melhor com fones de ouvido e articulação clara no início de cada nota.
 
 O reconhecedor usa Transformers.js 3.8.1 fixado e Whisper Tiny em `q8`/WASM. Essa combinação evita uma incompatibilidade de criação de sessão observada entre modelos Whisper quantizados e versões mais recentes do ONNX Runtime.
 
@@ -100,7 +115,7 @@ No primeiro uso, abra **Settings → Pages** no repositório e, em **Build and d
 
 ## Exercícios
 
-Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento, fórmula de compasso (`Time Signature`, evento `0x58`) e armadura (`Key Signature`, evento `0x59`). Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
+Use **Carregar exercício** para escolher MIDI (`.mid`/`.midi`), MusicXML (`.xml`/`.musicxml`), MusicXML compactado (`.mxl`) ou JSON. MIDI tipo 0 ou 1 pode conter mudanças de andamento, fórmula de compasso (`Time Signature`, evento `0x58`) e armadura (`Key Signature`, evento `0x59`). Em arquivos com várias pistas/partes, escolha a voz no painel de prática. Como a avaliação é monofônica, acordes MIDI usam a nota mais aguda; no MusicXML, vozes simultâneas são oferecidas separadamente.
 
 O BPM pode ser alterado entre 20 e 300 antes de iniciar. A aplicação redimensiona o tempo das notas e preserva proporcionalmente eventuais mudanças de andamento do MIDI. Quando o arquivo contém eventos MIDI de letra (`Lyric`, ou `Text` como alternativa), a opção **Letra** fica disponível nos rótulos da timeline e da partitura.
 
@@ -112,4 +127,6 @@ O JSON continua aceitando um array de notas ou `{ "name", "bpm", "timeSignatures
 - O ritmo usa o primeiro e último frame vocal de cada nota como aproximação de onset e duração.
 - Ambientes ruidosos, microfones com processamento próprio e harmônicos fortes podem afetar o YIN.
 - Os thresholds ficam em `src/config.ts` e devem ser calibrados em dispositivos reais.
-- MIDI tipo 2, divisão SMPTE e escolha manual de pista ainda não são suportados.
+- A calibração automática estima o piso de ruído e a latência informada pelo navegador; a latência acústica total varia com interface, drivers e monitoração e pode exigir ajuste manual.
+- MIDI tipo 2, divisão SMPTE e MusicXML `score-timewise` ainda não são suportados.
+- O modo offline/PWA reutiliza os arquivos já visitados. O primeiro download do modelo de solfejo ainda requer conexão.

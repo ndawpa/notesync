@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react'
 import { clefLabel, closestRhythmFigure, ledgerLinePositions, midiToStaffStep, resolveClef, splitIntoRhythmFigures, staffBottomStep, writtenMidiForClef, type Clef, type ClefPreference, type KeySignaturePreference } from '../music/notationUtils'
 import { midiToDisplayName } from '../music/noteUtils'
 import { trackDuration } from '../music/referenceTrack'
-import type { NoteNaming, ReferenceNote, ReferenceTrack } from '../types/music'
+import type { NoteNaming, ReferenceNote, ReferenceTrack, ScoreLayout } from '../types/music'
 
-interface Props { track: ReferenceTrack; elapsed: number; running: boolean; naming: NoteNaming; clefPreference: ClefPreference; keySignaturePreference: KeySignaturePreference; selectedNoteId?: string; onSelectNote: (id: string) => void }
+interface Props { track: ReferenceTrack; elapsed: number; running: boolean; naming: NoteNaming; clefPreference: ClefPreference; keySignaturePreference: KeySignaturePreference; layout: ScoreLayout; selectedNoteId?: string; onSelectNote: (id: string) => void }
 
 const BEAT_WIDTH = 78
 const LEFT = 38
@@ -57,7 +57,7 @@ const SHARP_STEPS = [3, 0, 4, 1, 5, 2, 6]
 const FLAT_STEPS = [6, 2, 5, 1, 4, 0, 3]
 const NATURAL_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11]
 
-function accidentalForMidi(midi: number, fifths: number) {
+function accidentalInfo(midi: number, fifths: number) {
   const preferFlats = fifths < 0
   const step = ((midiToStaffStep(midi, preferFlats) % 7) + 7) % 7
   const pitchClass = ((midi % 12) + 12) % 12
@@ -65,9 +65,7 @@ function accidentalForMidi(midi: number, fifths: number) {
   if (actual > 6) actual -= 12
   if (actual < -6) actual += 12
   const expected = fifths > 0 && SHARP_STEPS.slice(0, fifths).includes(step) ? 1 : fifths < 0 && FLAT_STEPS.slice(0, -fifths).includes(step) ? -1 : 0
-  if (actual === expected) return ''
-  if (actual === 0) return '♮'
-  return actual > 0 ? '♯' : '♭'
+  return { actual, expected, symbol: actual === expected ? '' : actual === 0 ? '♮' : actual > 0 ? '♯' : '♭' }
 }
 
 function resolvedKeys(track: ReferenceTrack, preference: KeySignaturePreference) {
@@ -86,7 +84,7 @@ function keySignatureYs(clef: Clef, fifths: number) {
   return midis.map((midi) => noteY(clef === 'treble8vb' ? midi - 12 : midi, clef))
 }
 
-function NoteGlyph({ note, track, naming, clef, fifths, beamed, active, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; fifths: number; beamed: boolean; active: boolean; selected: boolean; onSelect: () => void }) {
+function NoteGlyph({ note, track, naming, clef, fifths, accidental, stemDown, beamed, active, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; fifths: number; accidental: string; stemDown: boolean; beamed: boolean; active: boolean; selected: boolean; onSelect: () => void }) {
   const startBeat = beatAtTime(track, note.start)
   const beats = beatAtTime(track, note.start + note.duration) - startBeat
   const figure = closestRhythmFigure(beats)
@@ -97,16 +95,51 @@ function NoteGlyph({ note, track, naming, clef, fifths, beamed, active, selected
   const visibleLabel = naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming, false, fifths < 0)
   return <g className={`score-note ${selected ? 'selected' : ''} ${active ? 'active' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${note.lyric && naming === 'lyrics' ? `${note.lyric}, ` : ''}${midiToDisplayName(note.midi, 'letter', true, fifths < 0)}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
     {ledgerLines.map((lineY) => <line key={lineY} className="ledger-line" x1={x - 12} x2={x + 12} y1={lineY} y2={lineY} />)}
-    {accidentalForMidi(note.midi, fifths) && <text className="accidental" x={x - 18} y={y + 5}>{accidentalForMidi(note.midi, fifths)}</text>}
+    {accidental && <text className="accidental" x={x - 18} y={y + 5}>{accidental}</text>}
     <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`} />
-    {figure.stem && <line className="note-stem" x1={x + 7} x2={x + 7} y1={y} y2={y - 31} />}
-    {!beamed && Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={`M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`} />)}
+    {figure.stem && <line className="note-stem" x1={x + (stemDown ? -7 : 7)} x2={x + (stemDown ? -7 : 7)} y1={y} y2={y + (stemDown ? 31 : -31)} />}
+    {!beamed && Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={stemDown ? `M ${x - 7} ${y + 31 - index * 8} q -17 -8 -8 -20` : `M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`} />)}
     {dotted && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5" />}
     {naming !== 'hidden' && <text className="score-note-name" x={x} y={132} textAnchor="middle">{visibleLabel}</text>}
   </g>
 }
 
-export function SheetMusic({ track, elapsed, running, naming, clefPreference, keySignaturePreference, selectedNoteId, onSelectNote }: Props) {
+function WrappedScore({ track, elapsed, running, naming, clefPreference, keySignaturePreference, selectedNoteId, onSelectNote }: Omit<Props, 'layout'>) {
+  const totalBeats = Math.max(4, beatAtTime(track, trackDuration(track)))
+  const notation = notationLayout(track, totalBeats), clef = resolveClef(clefPreference, track.notes.map((note) => note.midi))
+  const keys = resolvedKeys(track, keySignaturePreference).map((key) => ({ ...key, beat: beatAtTime(track, key.time) }))
+  const keyAtBeat = (beat: number) => { let active = keys[0]; for (const key of keys) { if (key.beat <= beat + 0.001) active = key; else break } return active }
+  const signatureAtBeat = (beat: number) => { let active = notation.signatures[0]; for (const signature of notation.signatures) { if (signature.beat <= beat + 0.001) active = signature; else break } return active }
+  const boundaries = [...notation.bars.map((bar) => bar.beat), totalBeats]
+  const systems = Array.from({ length: Math.ceil((boundaries.length - 1) / 4) }, (_, systemIndex) => {
+    const firstBoundary = systemIndex * 4, startBeat = boundaries[firstBoundary], endBeat = boundaries[Math.min(boundaries.length - 1, firstBoundary + 4)]
+    return { startBeat, endBeat, bars: notation.bars.filter((bar) => bar.beat >= startBeat - 0.001 && bar.beat < endBeat - 0.001) }
+  })
+  const activeId = running ? track.notes.find((note) => elapsed >= note.start && elapsed < note.start + note.duration)?.id : undefined
+  return <section className="score-panel-view wrapped-score"><div className="score-heading"><span>{clefLabel(clef)} · sistemas</span><span>{systems.length} sistema(s)</span></div>{systems.map((system, systemIndex) => {
+    const key = keyAtBeat(system.startBeat), signature = signatureAtBeat(system.startBeat), span = Math.max(1, system.endBeat - system.startBeat)
+    const xAtBeat = (beat: number) => 145 + (beat - system.startBeat) / span * 680
+    const notes = track.notes.filter((note) => { const beat = beatAtTime(track, note.start); return beat >= system.startBeat - 0.001 && beat < system.endBeat - 0.001 })
+    return <svg key={systemIndex} className="score-system" viewBox="0 0 860 165" aria-label={`Sistema ${systemIndex + 1}`}>
+      {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="18" x2="842" y1={y} y2={y} />)}
+      {clef === 'bass' ? <text className="bass-clef" x="25" y="82">𝄢</text> : <g><text className="treble-clef" x="23" y="91">𝄞</text>{clef === 'treble8vb' && <text className="octave-mark" x="40" y="111">8</text>}</g>}
+      <g className="key-signature" transform="translate(73 0)">{keySignatureYs(clef, key.fifths).map((y, index) => <text key={index} x={index * 9} y={y + 6}>{key.fifths > 0 ? '♯' : '♭'}</text>)}</g>
+      <g className="time-signature" transform={`translate(${91 + Math.abs(key.fifths) * 9} 0)`}><text y="62">{signature.numerator}</text><text y="83">{signature.denominator}</text></g>
+      {system.bars.map((bar) => <g key={bar.measure}><line className="bar-line" x1={xAtBeat(bar.beat)} x2={xAtBeat(bar.beat)} y1={STAFF_TOP} y2={STAFF_BOTTOM}/><text className="measure-number" x={xAtBeat(bar.beat) + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
+      {notes.map((note) => { const beat = beatAtTime(track, note.start), x = xAtBeat(beat), y = noteY(note.midi, clef, key.fifths < 0), figure = closestRhythmFigure(beatAtTime(track, note.start + note.duration) - beat), stemDown = y < 66, active = note.id === activeId; return <g key={note.id} className={`score-note ${active ? 'active' : ''} ${note.id === selectedNoteId ? 'selected' : ''}`} onClick={() => onSelectNote(note.id)}>
+        {ledgerLinePositions(y, STAFF_TOP, STAFF_BOTTOM, 12).map((lineY) => <line key={lineY} className="ledger-line" x1={x - 11} x2={x + 11} y1={lineY} y2={lineY}/>)}
+        {accidentalInfo(note.midi, key.fifths).symbol && <text className="accidental" x={x - 18} y={y + 5}>{accidentalInfo(note.midi, key.fifths).symbol}</text>}
+        <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`}/>
+        {figure.stem && <line className="note-stem" x1={x + (stemDown ? -7 : 7)} x2={x + (stemDown ? -7 : 7)} y1={y} y2={y + (stemDown ? 31 : -31)}/>}
+        {figure.name.includes('pontuada') && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5"/>}{note.tuplet && <text className="tuplet-number" x={x} y="24">{note.tuplet.actual}</text>}
+        {naming !== 'hidden' && <text className="score-note-name" x={x} y="132" textAnchor="middle">{naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming, false, key.fifths < 0)}</text>}
+      </g>})}
+      <line className="bar-line" x1="842" x2="842" y1={STAFF_TOP} y2={STAFF_BOTTOM}/>
+    </svg>
+  })}</section>
+}
+
+export function SheetMusic({ track, elapsed, running, naming, clefPreference, keySignaturePreference, layout, selectedNoteId, onSelectNote }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const duration = trackDuration(track)
   const totalBeats = Math.max(4, beatAtTime(track, duration))
@@ -124,7 +157,9 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
     const startBeat = beatAtTime(track, note.start)
     const endBeat = beatAtTime(track, note.start + note.duration)
     const key = keyAtTime(note.start)
-    return { note, startBeat, endBeat, x: LEFT + startBeat * BEAT_WIDTH, y: noteY(note.midi, clef, key.fifths < 0), flags: closestRhythmFigure(endBeat - startBeat).flags }
+    const y = noteY(note.midi, clef, key.fifths < 0)
+    const stemDown = y < (STAFF_TOP + STAFF_BOTTOM) / 2
+    return { note, startBeat, endBeat, x: LEFT + startBeat * BEAT_WIDTH, y, stemDown, stemX: LEFT + startBeat * BEAT_WIDTH + (stemDown ? -7 : 7), stemEndY: y + (stemDown ? 31 : -31), flags: closestRhythmFigure(endBeat - startBeat).flags }
   })
   const beamGroups: typeof rhythmicNotes[] = []
   let pendingGroup: typeof rhythmicNotes = []
@@ -140,11 +175,28 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
     if (previous) for (const candidate of notation.signatures) { if (candidate.beat <= previous.startBeat + 0.001) previousSignature = candidate; else break }
     const previousPulseBeats = previousSignature.clocksPerClick ? previousSignature.clocksPerClick / 24 : (previousSignature.numerator > 3 && previousSignature.numerator % 3 === 0 ? 1.5 : 4 / previousSignature.denominator)
     const previousPulseIndex = previous ? Math.floor((previous.startBeat - previousSignature.beat + 0.001) / previousPulseBeats) : -1
-    if (previous && (Math.abs(previous.endBeat - current.startBeat) > 0.02 || previousSignature !== signature || previousPulseIndex !== pulseIndex)) flushBeamGroup()
+    if (previous && (Math.abs(previous.endBeat - current.startBeat) > 0.02 || previousSignature !== signature || previousPulseIndex !== pulseIndex || previous.stemDown !== current.stemDown)) flushBeamGroup()
     pendingGroup.push(current)
   }
   flushBeamGroup()
   const beamedNoteIds = new Set(beamGroups.flatMap((group) => group.map((item) => item.note.id)))
+  const accidentals = new Map<string, string>()
+  const accidentalState = new Map<string, number>()
+  for (const item of rhythmicNotes) {
+    const key = keyAtTime(item.note.start), info = accidentalInfo(item.note.midi, key.fifths)
+    let measure = 1
+    for (const bar of notation.bars) { if (bar.beat <= item.startBeat + 0.001) measure = bar.measure; else break }
+    const stateKey = `${measure}:${midiToStaffStep(writtenMidiForClef(item.note.midi, clef), key.fifths < 0)}`
+    const previous = accidentalState.get(stateKey)
+    const symbol = previous === info.actual ? '' : info.symbol || (previous !== undefined && info.actual === info.expected ? (info.actual === 0 ? '♮' : info.actual > 0 ? '♯' : '♭') : '')
+    accidentals.set(item.note.id, symbol); accidentalState.set(stateKey, info.actual)
+  }
+  const ties = rhythmicNotes.flatMap((item, index) => {
+    if (!item.note.tieStart) return []
+    const next = rhythmicNotes.slice(index + 1).find((candidate) => candidate.note.midi === item.note.midi && candidate.note.tieStop)
+    return next ? [{ from: item, to: next }] : []
+  })
+  const tuplets = rhythmicNotes.filter((item, index, list) => item.note.tuplet && (index === 0 || list[index - 1].note.tuplet?.actual !== item.note.tuplet.actual || Math.abs(list[index - 1].endBeat - item.startBeat) > 0.02))
   const rests: Array<{ beat: number; name: string; symbol: string }> = []
   let cursorTime = 0
   for (const note of [...track.notes].sort((a, b) => a.start - b.start)) {
@@ -162,6 +214,8 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
     if (elapsed === 0) { viewport.scrollLeft = 0; return }
     if (running) viewport.scrollLeft = Math.max(0, Math.min(playheadX - viewport.clientWidth * 0.35, viewport.scrollWidth - viewport.clientWidth))
   }, [elapsed, playheadX, running])
+
+  if (layout === 'systems') return <WrappedScore track={track} elapsed={elapsed} running={running} naming={naming} clefPreference={clefPreference} keySignaturePreference={keySignaturePreference} selectedNoteId={selectedNoteId} onSelectNote={onSelectNote} />
 
   return <section className="score-panel-view">
     <div className="score-heading"><span>{clefLabel(clef)}{clefPreference === 'auto' ? ' · automática' : ''}</span><span>{notation.signatures.map((signature) => `${signature.numerator}/${signature.denominator}`).join(' → ')} · duração quantizada pelo andamento</span></div>
@@ -182,18 +236,21 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
           return <g key={`${bar.beat}-${bar.measure}`}>{bar.beat > 0.001 && <line className="bar-line" x1={barX} x2={barX} y1={STAFF_TOP} y2={STAFF_BOTTOM} />}<text className="measure-number" x={bar.beat > 0.001 ? barX + 4 : boundaryX} y={STAFF_TOP - 9}>{bar.measure}</text></g>
         })}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
-        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} active={activeNoteId === note.id} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
+        {track.notes.map((note) => { const item = rhythmicNotes.find((candidate) => candidate.note.id === note.id)!; return <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} accidental={accidentals.get(note.id) ?? ''} stemDown={item.stemDown} beamed={beamedNoteIds.has(note.id)} active={activeNoteId === note.id} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} /> })}
         {beamGroups.map((group, groupIndex) => <g className="note-beams" key={`beam-${groupIndex}`}>
-          {group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line className={activeNoteId === item.note.id || activeNoteId === next.note.id ? 'active' : ''} key={`primary-${item.note.id}`} x1={item.x + 7} y1={item.y - 31} x2={next.x + 7} y2={next.y - 31} /> })}
+          {group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line className={activeNoteId === item.note.id || activeNoteId === next.note.id ? 'active' : ''} key={`primary-${item.note.id}`} x1={item.stemX} y1={item.stemEndY} x2={next.stemX} y2={next.stemEndY} /> })}
           {group.map((item, index) => {
             if (item.flags < 2) return null
             const previous = group[index - 1], next = group[index + 1]
-            if (next?.flags >= 2) return <line className={activeNoteId === item.note.id || activeNoteId === next.note.id ? 'active' : ''} key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={next.x + 7} y2={next.y - 23} />
+            const secondaryOffset = item.stemDown ? -8 : 8
+            if (next?.flags >= 2) return <line className={activeNoteId === item.note.id || activeNoteId === next.note.id ? 'active' : ''} key={`secondary-${item.note.id}`} x1={item.stemX} y1={item.stemEndY + secondaryOffset} x2={next.stemX} y2={next.stemEndY + secondaryOffset} />
             if (previous?.flags >= 2) return null
             const hookDirection = next ? 1 : -1
-            return <line className={activeNoteId === item.note.id ? 'active' : ''} key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={item.x + 7 + hookDirection * 12} y2={item.y - 23} />
+            return <line className={activeNoteId === item.note.id ? 'active' : ''} key={`secondary-${item.note.id}`} x1={item.stemX} y1={item.stemEndY + secondaryOffset} x2={item.stemX + hookDirection * 12} y2={item.stemEndY + secondaryOffset} />
           })}
         </g>)}
+        {ties.map(({ from, to }) => <path key={`tie-${from.note.id}`} className="note-tie" d={`M ${from.x + 7} ${from.y + 9} Q ${(from.x + to.x) / 2} ${Math.max(from.y, to.y) + 20} ${to.x - 7} ${to.y + 9}`} />)}
+        {tuplets.map((item) => <text key={`tuplet-${item.note.id}`} className="tuplet-number" x={item.x} y={Math.max(14, Math.min(32, item.stemEndY - 6))} textAnchor="middle">{item.note.tuplet!.actual}</text>)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
         </svg>
       </div>

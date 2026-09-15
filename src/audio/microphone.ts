@@ -1,4 +1,5 @@
 import { AUDIO_CONFIG } from '../config'
+import type { PitchDetection } from '../types/audio'
 
 export class MicrophoneInput {
   readonly context: AudioContext
@@ -8,6 +9,9 @@ export class MicrophoneInput {
   private readonly buffer: Float32Array<ArrayBuffer>
   private recorder?: MediaRecorder
   private recordingChunks: Blob[] = []
+  private worklet?: AudioWorkletNode
+  private workletSink?: GainNode
+  private latestPitch: PitchDetection | null = null
 
   private constructor(context: AudioContext, stream: MediaStream) {
     this.context = context
@@ -20,15 +24,31 @@ export class MicrophoneInput {
     this.buffer = new Float32Array(this.analyser.fftSize)
   }
 
-  static async create(): Promise<MicrophoneInput> {
+  static async create(deviceId?: string): Promise<MicrophoneInput> {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não oferece acesso ao microfone.')
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     })
     const context = new AudioContext({ latencyHint: 'interactive' })
     await context.resume()
-    return new MicrophoneInput(context, stream)
+    const microphone = new MicrophoneInput(context, stream)
+    await microphone.initializeWorklet()
+    return microphone
   }
+
+  private async initializeWorklet() {
+    if (!this.context.audioWorklet) return
+    try {
+      await this.context.audioWorklet.addModule(new URL('pitch-processor.js', document.baseURI).href)
+      this.worklet = new AudioWorkletNode(this.context, 'notesync-pitch')
+      this.workletSink = this.context.createGain(); this.workletSink.gain.value = 0
+      this.worklet.port.onmessage = (event: MessageEvent<PitchDetection | null>) => { this.latestPitch = event.data }
+      this.source.connect(this.worklet); this.worklet.connect(this.workletSink); this.workletSink.connect(this.context.destination)
+    } catch { this.worklet = undefined }
+  }
+
+  get usesAudioWorklet() { return Boolean(this.worklet) }
+  readPitchDetection(minRms: number) { this.worklet?.port.postMessage({ minRms }); return this.latestPitch }
 
   readSamples(): Float32Array<ArrayBuffer> {
     this.analyser.getFloatTimeDomainData(this.buffer)
@@ -59,6 +79,7 @@ export class MicrophoneInput {
   async close() {
     if (this.recorder?.state !== 'inactive') this.recorder?.stop()
     this.source.disconnect()
+    this.worklet?.disconnect(); this.workletSink?.disconnect()
     this.stream.getTracks().forEach((track) => track.stop())
     if (this.context.state !== 'closed') await this.context.close()
   }

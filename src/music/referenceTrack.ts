@@ -40,7 +40,8 @@ export function parseReferenceTrack(value: unknown): ReferenceTrack {
   const notes = data.notes.map((raw, index) => {
     const note = raw as Partial<ReferenceTrack['notes'][number]>
     if (!Number.isFinite(note.midi) || !Number.isFinite(note.start) || !Number.isFinite(note.duration) || Number(note.duration) <= 0) throw new Error(`Nota ${index + 1} inválida.`)
-    return { id: note.id ?? String(index + 1), pitch: note.pitch || midiToNoteName(Number(note.midi)), midi: Number(note.midi), start: Number(note.start), duration: Number(note.duration), lyric: typeof note.lyric === 'string' ? note.lyric : undefined }
+    const tuplet = note.tuplet && Number.isInteger(note.tuplet.actual) && Number.isInteger(note.tuplet.normal) && note.tuplet.actual > 0 && note.tuplet.normal > 0 ? note.tuplet : undefined
+    return { id: note.id ?? String(index + 1), pitch: note.pitch || midiToNoteName(Number(note.midi)), midi: Number(note.midi), start: Number(note.start), duration: Number(note.duration), lyric: typeof note.lyric === 'string' ? note.lyric : undefined, tieStart: note.tieStart === true || undefined, tieStop: note.tieStop === true || undefined, tuplet }
   }).sort((a, b) => a.start - b.start)
   const tempoChanges = data.tempoChanges?.filter((tempo) => Number.isFinite(tempo.time) && Number.isFinite(tempo.bpm) && tempo.time >= 0 && tempo.bpm > 0).sort((a, b) => a.time - b.time)
   const validDenominators = [1, 2, 4, 8, 16, 32, 64, 128]

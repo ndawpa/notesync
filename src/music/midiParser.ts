@@ -103,7 +103,7 @@ function toMonophonic(notes: RawNote[]): RawNote[] {
   return segments
 }
 
-export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI'): ReferenceTrack {
+export function parseMidiTracks(buffer: ArrayBuffer, fileName = 'Exercício MIDI'): ReferenceTrack[] {
   const reader = new MidiReader(new DataView(buffer))
   if (reader.text(4) !== 'MThd') throw new Error('O arquivo não possui um cabeçalho MIDI válido.')
   const headerLength = reader.uint32()
@@ -119,28 +119,9 @@ export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI')
     if (reader.text(4) !== 'MTrk') throw new Error(`Cabeçalho da pista ${index + 1} inválido.`)
     tracks.push(parseTrack(reader.bytes(reader.uint32()), tempos, timeSignatures, keySignatures))
   }
-  const selected = tracks.filter((track) => track.notes.length).sort((a, b) => b.notes.length - a.notes.length)[0]
-  if (!selected) throw new Error('Nenhuma nota foi encontrada no arquivo MIDI.')
+  const melodicTracks = tracks.map((track, index) => ({ ...track, sourceIndex: index })).filter((track) => track.notes.length).sort((a, b) => b.notes.length - a.notes.length)
+  if (!melodicTracks.length) throw new Error('Nenhuma nota foi encontrada no arquivo MIDI.')
   const tickToSeconds = makeTempoConverter(tempos, division)
-  const monophonicNotes = toMonophonic(selected.notes)
-  const lyricTrack = tracks.filter((track) => track.lyrics.length).sort((a, b) => b.lyrics.length - a.lyrics.length)[0]
-  const textTrack = tracks.filter((track) => track.texts.length).sort((a, b) => b.texts.length - a.texts.length)[0]
-  const rawLyrics = lyricTrack?.lyrics.length ? lyricTrack.lyrics : (textTrack?.texts ?? []).filter((item) => !item.text.trim().startsWith('@'))
-  const lyricsByNote = new Map<number, string>()
-  for (const lyric of rawLyrics) {
-    const text = lyric.text.replace(/^[\\/]+/, '').trim()
-    if (!text) continue
-    let noteIndex = monophonicNotes.findIndex((note) => lyric.tick >= note.startTick && lyric.tick < note.endTick)
-    if (noteIndex < 0) noteIndex = monophonicNotes.findIndex((note) => note.startTick >= lyric.tick)
-    if (noteIndex < 0) noteIndex = monophonicNotes.length - 1
-    const previous = lyricsByNote.get(noteIndex)
-    lyricsByNote.set(noteIndex, previous ? `${previous}${previous.endsWith('-') ? '' : ' '}${text}` : text)
-  }
-  const notes: ReferenceNote[] = monophonicNotes.map((note, index) => ({
-    id: String(index + 1), pitch: midiToNoteName(note.midi), midi: note.midi,
-    start: tickToSeconds(note.startTick), duration: tickToSeconds(note.endTick) - tickToSeconds(note.startTick),
-    lyric: lyricsByNote.get(index),
-  }))
   const cleanName = fileName.replace(/\.(mid|midi)$/i, '')
   const orderedTempos = [{ tick: 0, microsecondsPerBeat: 500_000 }, ...tempos]
     .sort((a, b) => a.tick - b.tick)
@@ -151,5 +132,27 @@ export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI')
     .filter((signature, index, list) => index === list.length - 1 || signature.tick !== list[index + 1].tick)
   const parsedSignatures = orderedSignatures.map((signature) => ({ time: tickToSeconds(signature.tick), numerator: signature.numerator, denominator: signature.denominator, clocksPerClick: signature.clocksPerClick }))
   const parsedKeys = keySignatures.sort((a, b) => a.tick - b.tick).filter((key, index, list) => index === list.length - 1 || key.tick !== list[index + 1].tick).map((key) => ({ time: tickToSeconds(key.tick), fifths: key.fifths, mode: key.mode }))
-  return { name: selected.name ? `${cleanName} — ${selected.name}` : cleanName, bpm: Math.round(tempoChanges[0].bpm), tempoChanges, timeSignatures: parsedSignatures, keySignatures: parsedKeys, notes }
+  const globalLyricTrack = tracks.filter((track) => track.lyrics.length).sort((a, b) => b.lyrics.length - a.lyrics.length)[0]
+  const globalTextTrack = tracks.filter((track) => track.texts.length).sort((a, b) => b.texts.length - a.texts.length)[0]
+  return melodicTracks.map((selected) => {
+    const monophonicNotes = toMonophonic(selected.notes)
+    const rawLyrics = selected.lyrics.length ? selected.lyrics : globalLyricTrack?.lyrics.length ? globalLyricTrack.lyrics : (selected.texts.length ? selected.texts : globalTextTrack?.texts ?? []).filter((item) => !item.text.trim().startsWith('@'))
+    const lyricsByNote = new Map<number, string>()
+    for (const lyric of rawLyrics) {
+      const text = lyric.text.replace(/^[\\/]+/, '').trim()
+      if (!text) continue
+      let noteIndex = monophonicNotes.findIndex((note) => lyric.tick >= note.startTick && lyric.tick < note.endTick)
+      if (noteIndex < 0) noteIndex = monophonicNotes.findIndex((note) => note.startTick >= lyric.tick)
+      if (noteIndex < 0) noteIndex = monophonicNotes.length - 1
+      const previous = lyricsByNote.get(noteIndex)
+      lyricsByNote.set(noteIndex, previous ? `${previous}${previous.endsWith('-') ? '' : ' '}${text}` : text)
+    }
+    const notes: ReferenceNote[] = monophonicNotes.map((note, index) => ({ id: String(index + 1), pitch: midiToNoteName(note.midi), midi: note.midi, start: tickToSeconds(note.startTick), duration: tickToSeconds(note.endTick) - tickToSeconds(note.startTick), lyric: lyricsByNote.get(index) }))
+    const voiceName = selected.name || `Pista ${selected.sourceIndex + 1}`
+    return { name: melodicTracks.length > 1 || selected.name ? `${cleanName} — ${voiceName}` : cleanName, bpm: Math.round(tempoChanges[0].bpm), tempoChanges, timeSignatures: parsedSignatures, keySignatures: parsedKeys, notes }
+  })
+}
+
+export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI'): ReferenceTrack {
+  return parseMidiTracks(buffer, fileName)[0]
 }

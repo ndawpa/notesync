@@ -2,10 +2,16 @@ import type { EvaluatedFrame } from '../types/audio'
 import type { ReferenceTrack } from '../types/music'
 import { pitchScore, representativeCents } from './pitchScoring'
 import { rhythmScore } from './rhythmScoring'
+import { evaluateTimings } from './rhythmScoring'
+import { measureAtTime } from '../music/timingUtils'
+import { trackDuration } from '../music/referenceTrack'
+
+export interface NoteScoreDetail { noteId: string; measure: number; pitch: string; cents?: number; onsetErrorMs?: number; durationErrorMs?: number; status: 'hit' | 'above' | 'below' | 'missed' }
 
 export interface SessionScore {
   pitch: number; rhythm: number; overall: number; notesEvaluated: number; notesDetected: number; notesMissed: number; notesHit: number
   above: number; below: number; maxErrorCents: number; averageErrorCents: number
+  noteDetails: NoteScoreDetail[]
 }
 
 export function calculateSessionScore(track: ReferenceTrack, frames: EvaluatedFrame[]): SessionScore {
@@ -14,6 +20,14 @@ export function calculateSessionScore(track: ReferenceTrack, frames: EvaluatedFr
   const evaluatedIds = new Set(frames.map((frame) => frame.expectedNoteId))
   const centsByNote = track.notes.map((note) => frames.filter((frame) => frame.expectedNoteId === note.id)).filter((items) => items.length).map(representativeCents)
   const errors = frames.map((frame) => Math.abs(frame.differenceCents))
+  const timings = new Map(evaluateTimings(track, frames).map((timing) => [timing.noteId, timing]))
+  const noteDetails = track.notes.map((note): NoteScoreDetail => {
+    const matches = frames.filter((frame) => frame.expectedNoteId === note.id)
+    const cents = matches.length ? representativeCents(matches) : undefined
+    const timing = timings.get(note.id)
+    const status = cents === undefined ? 'missed' : cents > 20 ? 'above' : cents < -20 ? 'below' : 'hit'
+    return { noteId: note.id, measure: measureAtTime(track, trackDuration(track), note.start), pitch: note.pitch, cents, onsetErrorMs: timing?.onsetErrorMs, durationErrorMs: timing?.durationErrorMs, status }
+  })
   return {
     pitch, rhythm, overall: pitch * 0.65 + rhythm * 0.35,
     notesEvaluated: track.notes.length, notesDetected: evaluatedIds.size, notesMissed: track.notes.length - evaluatedIds.size,
@@ -22,5 +36,6 @@ export function calculateSessionScore(track: ReferenceTrack, frames: EvaluatedFr
     below: centsByNote.filter((cents) => cents < -20).length,
     maxErrorCents: errors.length ? Math.max(...errors) : 0,
     averageErrorCents: errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : 0,
+    noteDetails,
   }
 }

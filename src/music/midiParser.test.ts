@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMidiFile } from './midiParser'
+import { parseMidiFile, parseMidiTracks } from './midiParser'
 
 const midiBytes = new Uint8Array([
   0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
@@ -29,5 +29,9 @@ describe('MIDI parser', () => {
 
   it('rejects non-MIDI content', () => {
     expect(() => parseMidiFile(new Uint8Array([1, 2, 3]).buffer)).toThrow(/incompleto|cabeçalho/)
+  })
+
+  it('exposes the melodic track list for voice selection', () => {
+    expect(parseMidiTracks(midiBytes.buffer, 'escala.mid').map((track) => track.name)).toEqual(['escala — Voice'])
   })
 })

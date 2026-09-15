@@ -7,9 +7,9 @@ export function rootMeanSquare(samples: Float32Array): number {
   return Math.sqrt(sum / samples.length)
 }
 
-export function detectPitchYin(samples: Float32Array, sampleRate: number): PitchDetection | null {
+export function detectPitchYin(samples: Float32Array, sampleRate: number, minRms: number = AUDIO_CONFIG.minRms): PitchDetection | null {
   const volume = rootMeanSquare(samples)
-  if (volume < AUDIO_CONFIG.minRms) return null
+  if (volume < minRms) return null
 
   const minLag = Math.max(2, Math.floor(sampleRate / AUDIO_CONFIG.maxFrequency))
   const maxLag = Math.min(Math.floor(sampleRate / AUDIO_CONFIG.minFrequency), Math.floor(samples.length / 2))

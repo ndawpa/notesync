@@ -12,6 +12,7 @@
   "dependencies": {
     "@huggingface/transformers": "3.8.1",
     "@vitejs/plugin-react": "latest",
+    "fflate": "^0.8.3",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
@@ -24,6 +25,7 @@
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
+    "linkedom": "^0.18.13",
     "typescript": "latest",
     "typescript-eslint": "latest",
     "vitest": "latest"

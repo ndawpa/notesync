@@ -23,6 +23,13 @@ header p { margin: 0; color: #99a7bd; }
 .spinner { width: 16px; height: 16px; border: 2px solid #526078; border-top-color: #43d9ad; border-radius: 50%; animation: spin .8s linear infinite; }
 .solfege-errors ul { padding-left: 22px; }
 .solfege-errors li { margin: 6px 0; }
+.report-scroll { overflow-x: auto; }
+.note-report table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.note-report th, .note-report td { padding: 8px; border-bottom: 1px solid #283550; text-align: left; }
+.note-report tr.hit { color: #8ff0d2; }
+.note-report tr.above { color: #ff9fba; }
+.note-report tr.below { color: #8ec5ff; }
+.note-report tr.missed { color: #94a3b8; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .countdown { position: fixed; z-index: 10; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; background: #0b1020aa; backdrop-filter: blur(3px); }
 .countdown span { color: #cbd5e1; font-size: 1.1rem; text-transform: uppercase; letter-spacing: .15em; }
@@ -37,6 +44,14 @@ header p { margin: 0; color: #99a7bd; }
 .music-view-controls legend { margin-bottom: 4px; color: #94a3b8; font-size: .72rem; }
 .music-view-controls button { padding: 6px 10px; }
 .music-view-controls button.selected { border-color: #43d9ad; color: #d8fff3; background: #176654; }
+.practice-controls { margin-bottom: 12px; padding: 12px; border: 1px solid #283550; border-radius: 10px; background: #121a2c; }
+.practice-controls h2 { margin: 0 0 8px; font-size: .9rem; }
+.practice-controls > div, .practice-controls fieldset { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.practice-controls fieldset { padding: 6px 8px; border: 1px solid #35425b; border-radius: 7px; }
+.practice-controls legend { color: #94a3b8; font-size: .72rem; }
+.practice-controls label, .octave-correction { display: flex; align-items: center; gap: 6px; font-size: .8rem; }
+.practice-controls select { padding: 4px; color: #e8edf5; background: #202b41; border: 1px solid #43516b; border-radius: 5px; }
+.octave-correction { margin: 0 0 12px; }
 .clef-control, .key-control, .bpm-control { display: flex; flex-direction: column; gap: 4px; color: #94a3b8; font-size: .72rem; }
 .clef-control select, .key-control select, .bpm-control input { min-width: 92px; padding: 6px 8px; color: #e8edf5; background: #202b41; border: 1px solid #43516b; border-radius: 6px; }
 .clef-control select { min-width: 120px; }
@@ -81,6 +96,8 @@ header p { margin: 0; color: #99a7bd; }
 .score-guide > rect { fill: #f8f5ed; }
 .score-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-color: #8a8172 #e9e4d8; scrollbar-width: thin; }
 .sheet-music { display: block; max-width: none; }
+.wrapped-score { padding-bottom: 8px; }
+.score-system { display: block; width: 100%; min-width: 680px; height: auto; border-bottom: 1px solid #ddd5c6; }
 .staff-line, .bar-line, .ledger-line { stroke: #222; stroke-width: 1.2; }
 .bar-line { stroke-width: 1.5; }
 .ledger-line { stroke-width: 1.5; }
@@ -104,6 +121,10 @@ header p { margin: 0; color: #99a7bd; }
 .score-note.active .note-stem, .score-note.active .note-flag { stroke: #087d68; stroke-width: 3; }
 .score-note.active .accidental, .score-note.active .score-note-name { fill: #087d68; }
 .note-beams .active { stroke: #18a889; }
+.note-tie { fill: none; stroke: #111; stroke-width: 1.6; }
+.tuplet-number { fill: #111; font: italic 12px Georgia, serif; }
+.loop-status { margin: 0 0 10px; color: #43d9ad; font-size: .84rem; }
+.range-summary { color: #b8c4d6; font-size: .78rem; }
 .note-editor { margin: 0 0 20px; padding: 16px; border: 1px solid #43516b; border-radius: 12px; background: #121a2c; }
 .note-editor > div:first-child { display: flex; align-items: center; justify-content: space-between; }
 .note-editor h2 { margin: 0 0 14px; font-size: 1.1rem; }

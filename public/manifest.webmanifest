@@ -1,0 +1,10 @@
+{
+  "name": "NoteSync — Treinamento vocal",
+  "short_name": "NoteSync",
+  "description": "Treinamento local de afinação, ritmo e solfejo.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [{ "src": "notesync-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
