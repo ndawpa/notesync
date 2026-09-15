@@ -29,7 +29,8 @@ export function PitchVisualizer({ track, frames, elapsed, running, naming, selec
   const secondStep = pixelsPerSecond < 100 ? 2 : 1
   const timeTicks = Array.from({ length: Math.floor(duration / secondStep) + 1 }, (_, index) => index * secondStep)
   const pitchRows = Array.from({ length: maxMidi - minMidi + 1 }, (_, index) => maxMidi - index)
-  const activeMidi = noteAtTime(track, elapsed)?.midi
+  const activeNote = noteAtTime(track, elapsed)
+  const activeMidi = activeNote?.midi
 
   useEffect(() => {
     const viewport = scrollRef.current
@@ -61,7 +62,7 @@ export function PitchVisualizer({ track, frames, elapsed, running, naming, selec
         <svg className="visualizer" width={width} height={HEIGHT} viewBox={'0 0 ' + width + ' ' + HEIGHT} role="img" aria-label="Timeline de pitch">
           {pitchRows.map((midi) => <line key={midi} x1="0" x2={width} y1={y(midi)} y2={y(midi)} className="grid" />)}
           {timeTicks.map((time) => <g key={time}><line x1={x(time)} x2={x(time)} y1={TOP} y2={HEIGHT - BOTTOM} className="time-grid" /><text x={x(time) + 3} y={HEIGHT - 10}>{time}s</text></g>)}
-          {track.notes.map((note) => <g key={note.id} className={'timeline-note ' + (selectedNoteId === note.id ? 'selected' : '')} role="button" tabIndex={0} onClick={() => onSelectNote(note.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelectNote(note.id) }}>
+          {track.notes.map((note) => <g key={note.id} className={`timeline-note ${selectedNoteId === note.id ? 'selected' : ''} ${running && activeNote?.id === note.id ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => onSelectNote(note.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelectNote(note.id) }}>
             <rect className="expected-note" x={x(note.start)} y={y(note.midi) - 8} width={Math.max(4, note.duration * pixelsPerSecond)} height="16" rx="3" />
             <text className="note-label" x={x(note.start) + 5} y={y(note.midi) - 12}>{naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming)}</text>
           </g>)}

@@ -10,6 +10,8 @@ O exercício também oferece metrônomo sincronizado ao andamento e à fórmula 
 
 A timeline usa escala temporal proporcional, oferece três níveis de zoom e acompanha automaticamente o playhead em exercícios maiores que a área visível.
 
+Durante a reprodução, o playhead permanece amarelo e a nota esperada ativa recebe destaque verde-azulado tanto na timeline quanto na figura rítmica da partitura.
+
 O eixo MIDI e o piano virtual permanecem fixos durante a rolagem; a tecla esperada é destacada em tempo real.
 
 O usuário pode alternar entre a timeline e uma partitura simplificada que respeita fórmulas como 4/4, 3/4 e 6/8, escolher entre cifras (`C`, `D`, `E`) e nomes em português (`Dó`, `Ré`, `Mi`), e editar pitch, início e duração ao selecionar uma nota. Clicar novamente no rótulo selecionado oculta os rótulos. Na partitura, os rótulos visuais omitem o número da oitava. As alterações permanecem na sessão atual do navegador.

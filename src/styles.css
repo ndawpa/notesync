@@ -69,6 +69,8 @@ header p { margin: 0; color: #99a7bd; }
 .timeline-note { cursor: pointer; outline: none; }
 .timeline-note:hover .expected-note, .timeline-note:focus .expected-note { opacity: 1; }
 .timeline-note.selected .expected-note { fill: #ffcc55; opacity: 1; stroke: #fff0b3; stroke-width: 2; }
+.timeline-note.active .expected-note { fill: #43d9ad; opacity: 1; stroke: #c4fff0; stroke-width: 2; }
+.timeline-note.active .note-label { fill: #c4fff0 !important; }
 .note-label { fill: #bcd0ff !important; font-weight: 700; }
 .sung-line { fill: none; stroke: #43d9ad; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .playhead { stroke: #ffcc55; stroke-width: 2; }
@@ -97,6 +99,11 @@ header p { margin: 0; color: #99a7bd; }
 .rest-symbol { fill: #111; font-family: serif; font-size: 28px; }
 .score-note:hover .note-head, .score-note:focus .note-head, .score-note.selected .note-head { stroke: #167d69; stroke-width: 3; }
 .score-note.selected .note-head.filled { fill: #20a486; }
+.score-note.active .note-head { fill: #b7f7e5; stroke: #087d68; stroke-width: 2.8; }
+.score-note.active .note-head.filled, .score-note.active .duration-dot { fill: #18a889; }
+.score-note.active .note-stem, .score-note.active .note-flag { stroke: #087d68; stroke-width: 3; }
+.score-note.active .accidental, .score-note.active .score-note-name { fill: #087d68; }
+.note-beams .active { stroke: #18a889; }
 .note-editor { margin: 0 0 20px; padding: 16px; border: 1px solid #43516b; border-radius: 12px; background: #121a2c; }
 .note-editor > div:first-child { display: flex; align-items: center; justify-content: space-between; }
 .note-editor h2 { margin: 0 0 14px; font-size: 1.1rem; }

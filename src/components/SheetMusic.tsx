@@ -86,7 +86,7 @@ function keySignatureYs(clef: Clef, fifths: number) {
   return midis.map((midi) => noteY(clef === 'treble8vb' ? midi - 12 : midi, clef))
 }
 
-function NoteGlyph({ note, track, naming, clef, fifths, beamed, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; fifths: number; beamed: boolean; selected: boolean; onSelect: () => void }) {
+function NoteGlyph({ note, track, naming, clef, fifths, beamed, active, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; fifths: number; beamed: boolean; active: boolean; selected: boolean; onSelect: () => void }) {
   const startBeat = beatAtTime(track, note.start)
   const beats = beatAtTime(track, note.start + note.duration) - startBeat
   const figure = closestRhythmFigure(beats)
@@ -95,7 +95,7 @@ function NoteGlyph({ note, track, naming, clef, fifths, beamed, selected, onSele
   const ledgerLines = ledgerLinePositions(y, STAFF_TOP, STAFF_BOTTOM, 12)
   const dotted = figure.name.includes('pontuada')
   const visibleLabel = naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming, false, fifths < 0)
-  return <g className={`score-note ${selected ? 'selected' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${note.lyric && naming === 'lyrics' ? `${note.lyric}, ` : ''}${midiToDisplayName(note.midi, 'letter', true, fifths < 0)}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
+  return <g className={`score-note ${selected ? 'selected' : ''} ${active ? 'active' : ''}`} role="button" tabIndex={0} aria-label={`Editar ${note.lyric && naming === 'lyrics' ? `${note.lyric}, ` : ''}${midiToDisplayName(note.midi, 'letter', true, fifths < 0)}, ${figure.name}`} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect() }}>
     {ledgerLines.map((lineY) => <line key={lineY} className="ledger-line" x1={x - 12} x2={x + 12} y1={lineY} y2={lineY} />)}
     {accidentalForMidi(note.midi, fifths) && <text className="accidental" x={x - 18} y={y + 5}>{accidentalForMidi(note.midi, fifths)}</text>}
     <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`} />
@@ -119,6 +119,7 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
   const activeKey = keyAtTime(elapsed)
   const signatureAtTime = (time: number) => { let active = notation.signatures[0]; for (const signature of notation.signatures) { if (signature.time <= time + 0.001) active = signature; else break } return active }
   const activeSignature = signatureAtTime(elapsed)
+  const activeNoteId = running ? track.notes.find((note) => elapsed >= note.start && elapsed < note.start + note.duration)?.id : undefined
   const rhythmicNotes = [...track.notes].sort((a, b) => a.start - b.start).map((note) => {
     const startBeat = beatAtTime(track, note.start)
     const endBeat = beatAtTime(track, note.start + note.duration)
@@ -181,16 +182,16 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
           return <g key={`${bar.beat}-${bar.measure}`}>{bar.beat > 0.001 && <line className="bar-line" x1={barX} x2={barX} y1={STAFF_TOP} y2={STAFF_BOTTOM} />}<text className="measure-number" x={bar.beat > 0.001 ? barX + 4 : boundaryX} y={STAFF_TOP - 9}>{bar.measure}</text></g>
         })}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
-        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
+        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} active={activeNoteId === note.id} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
         {beamGroups.map((group, groupIndex) => <g className="note-beams" key={`beam-${groupIndex}`}>
-          {group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line key={`primary-${item.note.id}`} x1={item.x + 7} y1={item.y - 31} x2={next.x + 7} y2={next.y - 31} /> })}
+          {group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line className={activeNoteId === item.note.id || activeNoteId === next.note.id ? 'active' : ''} key={`primary-${item.note.id}`} x1={item.x + 7} y1={item.y - 31} x2={next.x + 7} y2={next.y - 31} /> })}
           {group.map((item, index) => {
             if (item.flags < 2) return null
             const previous = group[index - 1], next = group[index + 1]
-            if (next?.flags >= 2) return <line key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={next.x + 7} y2={next.y - 23} />
+            if (next?.flags >= 2) return <line className={activeNoteId === item.note.id || activeNoteId === next.note.id ? 'active' : ''} key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={next.x + 7} y2={next.y - 23} />
             if (previous?.flags >= 2) return null
             const hookDirection = next ? 1 : -1
-            return <line key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={item.x + 7 + hookDirection * 12} y2={item.y - 23} />
+            return <line className={activeNoteId === item.note.id ? 'active' : ''} key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={item.x + 7 + hookDirection * 12} y2={item.y - 23} />
           })}
         </g>)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
