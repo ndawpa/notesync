@@ -7,7 +7,8 @@ import type { NoteNaming, ReferenceNote, ReferenceTrack } from '../types/music'
 interface Props { track: ReferenceTrack; elapsed: number; running: boolean; naming: NoteNaming; clefPreference: ClefPreference; keySignaturePreference: KeySignaturePreference; selectedNoteId?: string; onSelectNote: (id: string) => void }
 
 const BEAT_WIDTH = 78
-const LEFT = 155
+const LEFT = 38
+const GUIDE_WIDTH = 140
 const STAFF_TOP = 42
 const STAFF_BOTTOM = 90
 const HEIGHT = 190
@@ -114,6 +115,7 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
   const clef = resolveClef(clefPreference, track.notes.map((note) => note.midi))
   const keys = resolvedKeys(track, keySignaturePreference).map((key) => ({ ...key, beat: beatAtTime(track, key.time) }))
   const keyAtTime = (time: number) => { let active = keys[0]; for (const key of keys) { if (key.time <= time + 0.001) active = key; else break } return active }
+  const activeKey = keyAtTime(elapsed)
   const rhythmicNotes = [...track.notes].sort((a, b) => a.start - b.start).map((note) => {
     const startBeat = beatAtTime(track, note.start)
     const endBeat = beatAtTime(track, note.start + note.duration)
@@ -159,11 +161,16 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
 
   return <section className="score-panel-view">
     <div className="score-heading"><span>{clefLabel(clef)}{clefPreference === 'auto' ? ' · automática' : ''}</span><span>{notation.signatures.map((signature) => `${signature.numerator}/${signature.denominator}`).join(' → ')} · duração quantizada pelo andamento</span></div>
-    <div className="score-scroll" ref={scrollRef}>
-      <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
+    <div className="score-body">
+      <svg className="score-guide" width={GUIDE_WIDTH} height={HEIGHT} viewBox={`0 0 ${GUIDE_WIDTH} ${HEIGHT}`} aria-label={`Indicador fixo: ${clefLabel(clef)}`}>
+        <rect width={GUIDE_WIDTH} height={HEIGHT} />
+        {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="0" x2={GUIDE_WIDTH} y1={y} y2={y} />)}
         {clef === 'bass' ? <text className="bass-clef" x="17" y="82">𝄢</text> : <g><text className="treble-clef" x="15" y="91">𝄞</text>{clef === 'treble8vb' && <text className="octave-mark" x="31" y="111">8</text>}</g>}
-        {keys.map((key) => <g className="key-signature" key={`${key.time}-${key.fifths}`} transform={`translate(${key.beat === 0 ? 62 : LEFT + key.beat * BEAT_WIDTH + 8} 0)`}>{keySignatureYs(clef, key.fifths).map((y, index) => <text key={index} x={index * 10} y={y + 6}>{key.fifths > 0 ? '♯' : '♭'}</text>)}</g>)}
-        {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1={LEFT - 15} x2={width - 20} y1={y} y2={y} />)}
+        <g className="key-signature" transform="translate(65 0)">{keySignatureYs(clef, activeKey.fifths).map((y, index) => <text key={index} x={index * 10} y={y + 6}>{activeKey.fifths > 0 ? '♯' : '♭'}</text>)}</g>
+      </svg>
+      <div className="score-scroll" ref={scrollRef}>
+        <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
+        {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="0" x2={width - 20} y1={y} y2={y} />)}
         {notation.bars.map((bar) => <g key={`${bar.beat}-${bar.measure}`}><line className="bar-line" x1={LEFT + bar.beat * BEAT_WIDTH} x2={LEFT + bar.beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + bar.beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
         {notation.signatures.map((signature, index) => <g key={`${signature.beat}-${signature.numerator}/${signature.denominator}`} className="time-signature" transform={`translate(${LEFT + signature.beat * BEAT_WIDTH + (index === 0 ? -11 : 8)} 0)`}><text x="0" y="62" textAnchor="middle">{signature.numerator}</text><text x="0" y="83" textAnchor="middle">{signature.denominator}</text></g>)}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
@@ -180,7 +187,8 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
           })}
         </g>)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
-      </svg>
+        </svg>
+      </div>
     </div>
   </section>
 }
