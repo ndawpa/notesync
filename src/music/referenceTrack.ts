@@ -28,6 +28,7 @@ export function changeTrackBpm(track: ReferenceTrack, bpm: number): ReferenceTra
     notes: track.notes.map((note) => ({ ...note, start: note.start * timeScale, duration: note.duration * timeScale })),
     tempoChanges: track.tempoChanges?.map((tempo) => ({ time: tempo.time * timeScale, bpm: tempo.bpm * tempoScale })),
     timeSignatures: track.timeSignatures?.map((signature) => ({ ...signature, time: signature.time * timeScale })),
+    keySignatures: track.keySignatures?.map((signature) => ({ ...signature, time: signature.time * timeScale })),
   }
 }
 
@@ -47,5 +48,6 @@ export function parseReferenceTrack(value: unknown): ReferenceTrack {
   const timeSignatures = [{ time: 0, numerator: 4, denominator: 4, clocksPerClick: 24 }, ...importedSignatures]
     .sort((a, b) => a.time - b.time)
     .filter((signature, index, list) => index === list.length - 1 || signature.time !== list[index + 1].time)
-  return { name: data.name || 'Exercício carregado', bpm: data.bpm, tempoChanges, timeSignatures, notes }
+  const keySignatures = data.keySignatures?.filter((signature) => Number.isFinite(signature.time) && Number.isInteger(signature.fifths) && signature.time >= 0 && signature.fifths >= -7 && signature.fifths <= 7 && (signature.mode === 'major' || signature.mode === 'minor')).sort((a, b) => a.time - b.time)
+  return { name: data.name || 'Exercício carregado', bpm: data.bpm, tempoChanges, timeSignatures, keySignatures, notes }
 }

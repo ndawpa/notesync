@@ -16,6 +16,8 @@ Colcheias e semicolcheias consecutivas são agrupadas automaticamente por barras
 
 Na partitura, a clave pode ser escolhida automaticamente ou definida manualmente como Sol, Sol 8vb ou Fá. O modo automático minimiza notas fora do pentagrama e linhas suplementares sem alterar a altura sonora usada na avaliação.
 
+A armadura pode ser importada automaticamente do evento MIDI `Key Signature` (`0x59`), removida ou escolhida manualmente entre tonalidades maiores e menores. Sem armadura, os acidentes aparecem junto às notas; com armadura, os acidentes já previstos por ela não são repetidos. A partitura também reconhece a colcheia pontuada.
+
 ## Executar
 
 ```bash
@@ -84,11 +86,11 @@ No primeiro uso, abra **Settings → Pages** no repositório e, em **Build and d
 
 ## Exercícios
 
-Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento e de fórmula de compasso (`Time Signature`, evento `0x58`). Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
+Use **Carregar exercício** para escolher um arquivo MIDI (`.mid` ou `.midi`) ou JSON. O MIDI pode ser tipo 0 ou 1 e usar mudanças de andamento, fórmula de compasso (`Time Signature`, evento `0x58`) e armadura (`Key Signature`, evento `0x59`). Em arquivos com várias pistas, o MVP escolhe a pista com mais notas. Como a avaliação é monofônica, trechos com notas simultâneas usam a nota mais aguda.
 
 O BPM pode ser alterado entre 20 e 300 antes de iniciar. A aplicação redimensiona o tempo das notas e preserva proporcionalmente eventuais mudanças de andamento do MIDI. Quando o arquivo contém eventos MIDI de letra (`Lyric`, ou `Text` como alternativa), a opção **Letra** fica disponível nos rótulos da timeline e da partitura.
 
-O JSON continua aceitando um array de notas ou `{ "name", "bpm", "timeSignatures", "notes" }`. Veja `public/exercicio-exemplo.json`.
+O JSON continua aceitando um array de notas ou `{ "name", "bpm", "timeSignatures", "keySignatures", "notes" }`. Veja `public/exercicio-exemplo.json`.
 
 ## Limites conhecidos
 

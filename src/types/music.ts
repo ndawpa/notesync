@@ -12,6 +12,7 @@ export interface ReferenceTrack {
   bpm?: number
   tempoChanges?: Array<{ time: number; bpm: number }>
   timeSignatures?: TimeSignatureChange[]
+  keySignatures?: KeySignatureChange[]
   notes: ReferenceNote[]
 }
 
@@ -20,6 +21,12 @@ export interface TimeSignatureChange {
   numerator: number
   denominator: number
   clocksPerClick?: number
+}
+
+export interface KeySignatureChange {
+  time: number
+  fifths: number
+  mode: 'major' | 'minor'
 }
 
 export type MusicView = 'timeline' | 'score'

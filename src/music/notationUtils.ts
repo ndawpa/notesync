@@ -1,6 +1,13 @@
 export interface RhythmFigure { beats: number; name: string; restSymbol: string; filled: boolean; stem: boolean; flags: number }
 export type Clef = 'treble' | 'treble8vb' | 'bass'
 export type ClefPreference = 'auto' | Clef
+export type KeySignaturePreference = 'auto' | 'none' | `major:${number}` | `minor:${number}`
+const MAJOR_KEYS = ['Dó♭', 'Sol♭', 'Ré♭', 'Lá♭', 'Mi♭', 'Si♭', 'Fá', 'Dó', 'Sol', 'Ré', 'Lá', 'Mi', 'Si', 'Fá♯', 'Dó♯']
+const MINOR_KEYS = ['Lá♭', 'Mi♭', 'Si♭', 'Fá', 'Dó', 'Sol', 'Ré', 'Lá', 'Mi', 'Si', 'Fá♯', 'Dó♯', 'Sol♯', 'Ré♯', 'Lá♯']
+export const KEY_SIGNATURE_OPTIONS = Array.from({ length: 15 }, (_, index) => index - 7).flatMap((fifths) => [
+  { value: `major:${fifths}` as KeySignaturePreference, label: `${MAJOR_KEYS[fifths + 7]} maior` },
+  { value: `minor:${fifths}` as KeySignaturePreference, label: `${MINOR_KEYS[fifths + 7]} menor` },
+])
 
 export const RHYTHM_FIGURES: RhythmFigure[] = [
   { beats: 4, name: 'semibreve', restSymbol: '𝄻', filled: false, stem: false, flags: 0 },
@@ -8,6 +15,7 @@ export const RHYTHM_FIGURES: RhythmFigure[] = [
   { beats: 2, name: 'mínima', restSymbol: '𝄼', filled: false, stem: true, flags: 0 },
   { beats: 1.5, name: 'semínima pontuada', restSymbol: '𝄽·', filled: true, stem: true, flags: 0 },
   { beats: 1, name: 'semínima', restSymbol: '𝄽', filled: true, stem: true, flags: 0 },
+  { beats: 0.75, name: 'colcheia pontuada', restSymbol: '𝄾·', filled: true, stem: true, flags: 1 },
   { beats: 0.5, name: 'colcheia', restSymbol: '𝄾', filled: true, stem: true, flags: 1 },
   { beats: 0.25, name: 'semicolcheia', restSymbol: '𝄿', filled: true, stem: true, flags: 2 },
 ]
@@ -29,8 +37,9 @@ export function splitIntoRhythmFigures(beats: number): RhythmFigure[] {
   return figures
 }
 
-const DIATONIC_STEPS = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6]
-export const midiToStaffStep = (midi: number) => (Math.floor(midi / 12) - 1) * 7 + DIATONIC_STEPS[((midi % 12) + 12) % 12]
+const SHARP_DIATONIC_STEPS = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6]
+const FLAT_DIATONIC_STEPS = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6]
+export const midiToStaffStep = (midi: number, preferFlats = false) => (Math.floor(midi / 12) - 1) * 7 + (preferFlats ? FLAT_DIATONIC_STEPS : SHARP_DIATONIC_STEPS)[((midi % 12) + 12) % 12]
 export const isSharpMidi = (midi: number) => [1, 3, 6, 8, 10].includes(((Math.round(midi) % 12) + 12) % 12)
 
 const CLEFS: Record<Clef, { bottomMidi: number; writtenOffset: number; label: string }> = {

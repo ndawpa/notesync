@@ -8,6 +8,8 @@ describe('music notation utilities', () => {
     expect(midiToDisplayName(61, 'solfege')).toBe('Dó#4')
     expect(midiToDisplayName(60, 'letter', false)).toBe('C')
     expect(midiToDisplayName(61, 'solfege', false)).toBe('Dó#')
+    expect(midiToDisplayName(61, 'letter', false, true)).toBe('D♭')
+    expect(midiToDisplayName(61, 'solfege', false, true)).toBe('Ré♭')
     expect(midiToDisplayName(60, 'hidden')).toBe('')
   })
 
@@ -15,6 +17,7 @@ describe('music notation utilities', () => {
     expect(secondsToBeats(1, 60)).toBe(1)
     expect(closestRhythmFigure(1).name).toBe('semínima')
     expect(closestRhythmFigure(4).name).toBe('semibreve')
+    expect(closestRhythmFigure(0.75).name).toBe('colcheia pontuada')
   })
 
   it('splits rests and maps pitch vertically', () => {
