@@ -8,6 +8,8 @@ O exercício também oferece metrônomo sincronizado ao andamento (incluindo mud
 
 A timeline usa escala temporal proporcional, oferece três níveis de zoom e acompanha automaticamente o playhead em exercícios maiores que a área visível.
 
+O usuário pode alternar entre a timeline e uma partitura simplificada em 4/4, escolher entre cifras (`C`, `D`, `E`) e nomes em português (`Dó`, `Ré`, `Mi`) e editar pitch, início e duração ao selecionar uma nota. As alterações permanecem na sessão atual do navegador.
+
 ## Executar
 
 ```bash

@@ -27,6 +27,11 @@ header p { margin: 0; color: #99a7bd; }
 .current-card div, .score-head div { display: flex; flex-direction: column; gap: 4px; }
 .current-card span, .score-head span, dt { color: #94a3b8; font-size: .8rem; }
 .current-card strong { font-size: 1.15rem; }
+.music-view-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 0 0 12px; padding: 12px; border: 1px solid #283550; border-radius: 10px; background: #121a2c; }
+.music-view-controls fieldset { display: flex; gap: 5px; margin: 0; padding: 0; border: 0; }
+.music-view-controls legend { margin-bottom: 4px; color: #94a3b8; font-size: .72rem; }
+.music-view-controls button { padding: 6px 10px; }
+.music-view-controls button.selected { border-color: #43d9ad; color: #d8fff3; background: #176654; }
 .status.afinado, .status.aceitável { color: #43d9ad; }
 .status.desafinado { color: #ffc857; }
 .status.erro-significativo { color: #ff6b7a; }
@@ -43,9 +48,40 @@ header p { margin: 0; color: #99a7bd; }
 .time-grid { stroke: #202a3d; stroke-width: .6; stroke-dasharray: 3 5; }
 .axis { stroke: #64748b; }
 .expected-note { fill: #4776e6; opacity: .7; }
+.timeline-note { cursor: pointer; outline: none; }
+.timeline-note:hover .expected-note, .timeline-note:focus .expected-note { opacity: 1; }
+.timeline-note.selected .expected-note { fill: #ffcc55; opacity: 1; stroke: #fff0b3; stroke-width: 2; }
 .note-label { fill: #bcd0ff !important; font-weight: 700; }
 .sung-line { fill: none; stroke: #43d9ad; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .playhead { stroke: #ffcc55; stroke-width: 2; }
+.score-panel-view { overflow: hidden; margin-top: 0; border: 1px solid #283550; border-radius: 14px; background: #f8f5ed; color: #182033; }
+.score-heading { display: flex; justify-content: space-between; padding: 8px 12px; color: #526078; background: #e9e4d8; border-bottom: 1px solid #cbc3b2; font-size: .78rem; }
+.score-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-color: #8a8172 #e9e4d8; scrollbar-width: thin; }
+.sheet-music { display: block; max-width: none; }
+.staff-line, .bar-line, .ledger-line { stroke: #222; stroke-width: 1.2; }
+.bar-line { stroke-width: 1.5; }
+.ledger-line { stroke-width: 1.5; }
+.treble-clef { fill: #111; font-family: serif; font-size: 64px; }
+.measure-number, .rhythm-name { fill: #697386; font-size: 9px; }
+.score-note { cursor: pointer; outline: none; }
+.note-head { fill: #f8f5ed; stroke: #111; stroke-width: 1.7; }
+.note-head.filled { fill: #111; }
+.note-stem, .note-flag { fill: none; stroke: #111; stroke-width: 1.8; }
+.duration-dot { fill: #111; }
+.accidental { fill: #111; font-family: serif; font-size: 18px; }
+.score-note-name { fill: #27364d; font-size: 10px; font-weight: 700; }
+.rest-symbol { fill: #111; font-family: serif; font-size: 28px; }
+.score-note:hover .note-head, .score-note:focus .note-head, .score-note.selected .note-head { stroke: #167d69; stroke-width: 3; }
+.score-note.selected .note-head.filled { fill: #20a486; }
+.note-editor { margin: 0 0 20px; padding: 16px; border: 1px solid #43516b; border-radius: 12px; background: #121a2c; }
+.note-editor > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.note-editor h2 { margin: 0 0 14px; font-size: 1.1rem; }
+.note-editor .close { padding: 2px 9px; font-size: 1.3rem; }
+.note-editor > label { display: inline-flex; flex-direction: column; gap: 5px; min-width: 180px; margin: 0 12px 12px 0; color: #94a3b8; font-size: .8rem; }
+.note-editor input { padding: 8px; color: #e8edf5; background: #0b1020; border: 1px solid #43516b; border-radius: 6px; font: inherit; }
+.note-editor small { color: #43d9ad; }
+.editor-actions { display: flex; justify-content: space-between; margin-top: 4px; }
+button.danger { color: #fecaca; border-color: #7f1d1d; background: #49151b; }
 .progress { display: block; width: calc(100% - 12px); height: 4px; margin: 8px 6px 24px; border: 0; border-radius: 99px; overflow: hidden; appearance: none; }
 .progress::-webkit-progress-bar { background: #283550; }
 .progress::-webkit-progress-value { background: #43d9ad; transition: width .05s linear; }

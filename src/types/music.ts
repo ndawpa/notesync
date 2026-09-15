@@ -12,3 +12,6 @@ export interface ReferenceTrack {
   tempoChanges?: Array<{ time: number; bpm: number }>
   notes: ReferenceNote[]
 }
+
+export type MusicView = 'timeline' | 'score'
+export type NoteNaming = 'letter' | 'solfege'
