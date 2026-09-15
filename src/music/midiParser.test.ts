@@ -16,6 +16,7 @@ describe('MIDI parser', () => {
     const track = parseMidiFile(midiBytes.buffer, 'escala.mid')
     expect(track.name).toBe('escala — Voice')
     expect(track.bpm).toBe(120)
+    expect(track.tempoChanges).toEqual([{ time: 0, bpm: 120 }])
     expect(track.notes).toHaveLength(2)
     expect(track.notes[0]).toMatchObject({ pitch: 'C4', midi: 60, start: 0, duration: 0.5 })
     expect(track.notes[1]).toMatchObject({ pitch: 'D4', midi: 62, start: 0.5, duration: 0.5 })

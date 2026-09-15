@@ -9,5 +9,6 @@ export interface ReferenceNote {
 export interface ReferenceTrack {
   name: string
   bpm?: number
+  tempoChanges?: Array<{ time: number; bpm: number }>
   notes: ReferenceNote[]
 }

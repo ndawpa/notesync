@@ -116,6 +116,9 @@ export function parseMidiFile(buffer: ArrayBuffer, fileName = 'Exercício MIDI')
     start: tickToSeconds(note.startTick), duration: tickToSeconds(note.endTick) - tickToSeconds(note.startTick),
   }))
   const cleanName = fileName.replace(/\.(mid|midi)$/i, '')
-  const firstTempo = [...tempos].sort((a, b) => a.tick - b.tick)[0]?.microsecondsPerBeat ?? 500_000
-  return { name: selected.name ? `${cleanName} — ${selected.name}` : cleanName, bpm: Math.round(60_000_000 / firstTempo), notes }
+  const orderedTempos = [{ tick: 0, microsecondsPerBeat: 500_000 }, ...tempos]
+    .sort((a, b) => a.tick - b.tick)
+    .filter((tempo, index, list) => index === list.length - 1 || tempo.tick !== list[index + 1].tick)
+  const tempoChanges = orderedTempos.map((tempo) => ({ time: tickToSeconds(tempo.tick), bpm: 60_000_000 / tempo.microsecondsPerBeat }))
+  return { name: selected.name ? `${cleanName} — ${selected.name}` : cleanName, bpm: Math.round(tempoChanges[0].bpm), tempoChanges, notes }
 }

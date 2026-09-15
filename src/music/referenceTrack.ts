@@ -26,5 +26,6 @@ export function parseReferenceTrack(value: unknown): ReferenceTrack {
     if (!Number.isFinite(note.midi) || !Number.isFinite(note.start) || !Number.isFinite(note.duration) || Number(note.duration) <= 0) throw new Error(`Nota ${index + 1} inválida.`)
     return { id: note.id ?? String(index + 1), pitch: note.pitch || midiToNoteName(Number(note.midi)), midi: Number(note.midi), start: Number(note.start), duration: Number(note.duration) }
   }).sort((a, b) => a.start - b.start)
-  return { name: data.name || 'Exercício carregado', bpm: data.bpm, notes }
+  const tempoChanges = data.tempoChanges?.filter((tempo) => Number.isFinite(tempo.time) && Number.isFinite(tempo.bpm) && tempo.time >= 0 && tempo.bpm > 0).sort((a, b) => a.time - b.time)
+  return { name: data.name || 'Exercício carregado', bpm: data.bpm, tempoChanges, notes }
 }

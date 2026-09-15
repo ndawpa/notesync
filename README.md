@@ -4,6 +4,8 @@ Protótipo local de treinamento vocal com React, TypeScript, Web Audio API e det
 
 A melodia de referência é sintetizada durante o exercício e pode ser ligada, desligada ou ter seu volume ajustado antes de iniciar. Use fones para evitar que o microfone capture a própria referência.
 
+O exercício também oferece metrônomo sincronizado ao andamento (incluindo mudanças de tempo do MIDI), tom inicial baseado na primeira nota e contagem preparatória configurável.
+
 ## Executar
 
 ```bash

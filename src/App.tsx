@@ -24,6 +24,10 @@ export default function App() {
   const [error, setError] = useState('')
   const [playReference, setPlayReference] = useState(true)
   const [referenceVolume, setReferenceVolume] = useState(0.35)
+  const [metronome, setMetronome] = useState(true)
+  const [initialCue, setInitialCue] = useState(true)
+  const [countInBeats, setCountInBeats] = useState(4)
+  const [countdown, setCountdown] = useState<number>()
   const inputRef = useRef<HTMLInputElement>(null)
   const microphoneRef = useRef<MicrophoneInput | undefined>(undefined)
   const referencePlayerRef = useRef<ReferencePlayer | undefined>(undefined)
@@ -43,6 +47,7 @@ export default function App() {
     referencePlayerRef.current?.stop()
     referencePlayerRef.current = undefined
     setRunning(false)
+    setCountdown(undefined)
     setScore(calculateSessionScore(trackRef.current, completedFrames))
     const microphone = microphoneRef.current
     microphoneRef.current = undefined
@@ -55,10 +60,16 @@ export default function App() {
     try {
       const microphone = await MicrophoneInput.create()
       microphoneRef.current = microphone
-      const startedAt = microphone.context.currentTime + 0.15
-      if (playReference) {
+      const initialBpm = trackRef.current.tempoChanges?.[0]?.bpm ?? trackRef.current.bpm ?? 60
+      const beatDuration = 60 / initialBpm
+      const countStartedAt = microphone.context.currentTime + 0.15
+      const preparationDuration = (countInBeats || (initialCue ? 1 : 0)) * beatDuration
+      const startedAt = countStartedAt + preparationDuration
+      if (playReference || metronome || initialCue) {
         const player = new ReferencePlayer(microphone.context, referenceVolume)
-        player.schedule(trackRef.current, startedAt)
+        if (playReference) player.schedule(trackRef.current, startedAt)
+        if (metronome) player.scheduleMetronome(trackRef.current, startedAt, countStartedAt, countInBeats)
+        if (initialCue && trackRef.current.notes[0]) player.scheduleCue(trackRef.current.notes[0].midi, countStartedAt + 0.05, Math.min(beatDuration * 0.8, Math.max(0.2, preparationDuration - 0.1)))
         referencePlayerRef.current = player
       }
       setRunning(true)
@@ -66,7 +77,11 @@ export default function App() {
         const mic = microphoneRef.current
         if (!mic) return
         const now = mic.context.currentTime - startedAt
-        if (now < 0) { animationRef.current = requestAnimationFrame(analyse); return }
+        if (now < 0) {
+          setCountdown(countInBeats ? Math.min(countInBeats, Math.ceil(-now / beatDuration)) : undefined)
+          animationRef.current = requestAnimationFrame(analyse); return
+        }
+        setCountdown(undefined)
         if (now >= trackDuration(trackRef.current)) { setElapsed(trackDuration(trackRef.current)); void finish(); return }
         const samples = mic.readSamples()
         setVolume(rootMeanSquare(samples))
@@ -88,7 +103,7 @@ export default function App() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível acessar o microfone.'); setRunning(false) }
   }
 
-  const reset = () => { setElapsed(0); setFrames([]); setScore(undefined); setDetected(undefined); setVolume(0); framesRef.current = [] }
+  const reset = () => { setElapsed(0); setFrames([]); setScore(undefined); setDetected(undefined); setVolume(0); setCountdown(undefined); framesRef.current = [] }
   const expected = noteAtTime(track, elapsed)
   const currentEvaluated = frames.at(-1)
   const difference = currentEvaluated && currentEvaluated.expectedNoteId === expected?.id ? currentEvaluated.differenceCents : undefined
@@ -105,9 +120,10 @@ export default function App() {
   }
 
   return <main>
-    <header><div><p className="eyebrow">Treinamento vocal</p><h1>{track.name}</h1><p>{track.bpm ? `${track.bpm} BPM · ` : ''}{track.notes.length} notas · {trackDuration(track).toFixed(1)} segundos</p></div><Controls running={running} hasResults={Boolean(score)} playReference={playReference} referenceVolume={referenceVolume} onLoad={() => inputRef.current?.click()} onStart={() => void start()} onStop={() => void finish()} onReset={reset} onPlayReferenceChange={setPlayReference} onReferenceVolumeChange={setReferenceVolume} /></header>
+    <header><div><p className="eyebrow">Treinamento vocal</p><h1>{track.name}</h1><p>{track.bpm ? `${track.bpm} BPM · ` : ''}{track.notes.length} notas · {trackDuration(track).toFixed(1)} segundos</p></div><Controls running={running} hasResults={Boolean(score)} playReference={playReference} referenceVolume={referenceVolume} metronome={metronome} initialCue={initialCue} countInBeats={countInBeats} onLoad={() => inputRef.current?.click()} onStart={() => void start()} onStop={() => void finish()} onReset={reset} onPlayReferenceChange={setPlayReference} onReferenceVolumeChange={setReferenceVolume} onMetronomeChange={setMetronome} onInitialCueChange={setInitialCue} onCountInBeatsChange={setCountInBeats} /></header>
     <input ref={inputRef} type="file" accept=".mid,.midi,.json,audio/midi,audio/x-midi,application/json" hidden onChange={(event) => void loadFile(event.target.files?.[0])} />
     {error && <p className="error" role="alert">{error}</p>}
+    {countdown !== undefined && <div className="countdown" role="status"><span>Prepare-se</span><strong>{countdown}</strong></div>}
     <CurrentNote expected={expected} detected={detected} differenceCents={difference} volume={volume} />
     <PitchVisualizer track={track} frames={frames} elapsed={elapsed} />
     <progress className="progress" max={trackDuration(track)} value={Math.min(elapsed, trackDuration(track))} aria-label="Progresso do exercício" />
