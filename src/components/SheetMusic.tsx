@@ -9,6 +9,7 @@ interface Props { track: ReferenceTrack; elapsed: number; running: boolean; nami
 const BEAT_WIDTH = 78
 const LEFT = 38
 const GUIDE_WIDTH = 140
+const BAR_NOTE_GAP = 14
 const STAFF_TOP = 42
 const STAFF_BOTTOM = 90
 const HEIGHT = 190
@@ -171,7 +172,11 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
       <div className="score-scroll" ref={scrollRef}>
         <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
         {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="0" x2={width - 20} y1={y} y2={y} />)}
-        {notation.bars.map((bar) => <g key={`${bar.beat}-${bar.measure}`}><line className="bar-line" x1={LEFT + bar.beat * BEAT_WIDTH} x2={LEFT + bar.beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + bar.beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
+        {notation.bars.map((bar) => {
+          const boundaryX = LEFT + bar.beat * BEAT_WIDTH
+          const barX = boundaryX - BAR_NOTE_GAP
+          return <g key={`${bar.beat}-${bar.measure}`}>{bar.beat > 0.001 && <line className="bar-line" x1={barX} x2={barX} y1={STAFF_TOP} y2={STAFF_BOTTOM} />}<text className="measure-number" x={bar.beat > 0.001 ? barX + 4 : boundaryX} y={STAFF_TOP - 9}>{bar.measure}</text></g>
+        })}
         {notation.signatures.map((signature, index) => <g key={`${signature.beat}-${signature.numerator}/${signature.denominator}`} className="time-signature" transform={`translate(${LEFT + signature.beat * BEAT_WIDTH + (index === 0 ? -11 : 8)} 0)`}><text x="0" y="62" textAnchor="middle">{signature.numerator}</text><text x="0" y="83" textAnchor="middle">{signature.denominator}</text></g>)}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
         {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}

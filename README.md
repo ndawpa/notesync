@@ -22,6 +22,8 @@ A armadura pode ser importada automaticamente do evento MIDI `Key Signature` (`0
 
 A clave e a armadura permanecem fixas à esquerda durante a rolagem da partitura. Quando o MIDI contém uma mudança de armadura, o indicador fixo acompanha a armadura ativa na posição atual da reprodução.
 
+As barras de compasso mantêm um pequeno espaçamento antes das notas do primeiro tempo, evitando que a cabeça da nota fique desenhada sobre a barra.
+
 ## Executar
 
 ```bash
