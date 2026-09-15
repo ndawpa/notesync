@@ -123,6 +123,7 @@ header p { margin: 0; color: #99a7bd; }
 .note-beams .active { stroke: #18a889; }
 .note-tie { fill: none; stroke: #111; stroke-width: 1.6; }
 .tuplet-number { fill: #111; font: italic 12px Georgia, serif; }
+.tuplet-bracket line { stroke: #111; stroke-width: 1; }
 .loop-status { margin: 0 0 10px; color: #43d9ad; font-size: .84rem; }
 .range-summary { color: #b8c4d6; font-size: .78rem; }
 .note-editor { margin: 0 0 20px; padding: 16px; border: 1px solid #43516b; border-radius: 12px; background: #121a2c; }

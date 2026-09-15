@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chooseAutomaticClef, closestRhythmFigure, ledgerLinePositions, midiToStaffStep, resolveClef, secondsToBeats, splitIntoRhythmFigures } from './notationUtils'
+import { chooseAutomaticClef, closestRhythmFigure, ledgerLinePositions, midiToStaffStep, positionInsideMeasure, resolveClef, secondsToBeats, splitIntoRhythmFigures } from './notationUtils'
 import { midiToDisplayName } from './noteUtils'
 
 describe('music notation utilities', () => {
@@ -38,5 +38,12 @@ describe('music notation utilities', () => {
     expect(ledgerLinePositions(114, 42, 90, 12)).toEqual([102, 114])
     expect(ledgerLinePositions(36, 42, 90, 12)).toEqual([])
     expect(ledgerLinePositions(30, 42, 90, 12)).toEqual([30])
+  })
+
+  it('keeps notes away from both measure boundaries', () => {
+    expect(positionInsideMeasure(0, 0, 4, 100, 300)).toBe(114)
+    expect(positionInsideMeasure(4, 0, 4, 100, 300)).toBe(286)
+    expect(positionInsideMeasure(2, 0, 4, 100, 300)).toBe(200)
+    expect(positionInsideMeasure(0, 0, 4, 100, 300, 24)).toBe(124)
   })
 })

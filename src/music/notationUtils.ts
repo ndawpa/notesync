@@ -77,3 +77,10 @@ export function ledgerLinePositions(noteY: number, staffTop: number, staffBottom
   }
   return positions
 }
+
+export function positionInsideMeasure(beat: number, startBeat: number, endBeat: number, startX: number, endX: number, gap = 14) {
+  const beatSpan = Math.max(0.001, endBeat - startBeat)
+  const usableWidth = Math.max(1, endX - startX - gap * 2)
+  const progress = Math.max(0, Math.min(1, (beat - startBeat) / beatSpan))
+  return startX + gap + progress * usableWidth
+}

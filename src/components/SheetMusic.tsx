@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { clefLabel, closestRhythmFigure, ledgerLinePositions, midiToStaffStep, resolveClef, splitIntoRhythmFigures, staffBottomStep, writtenMidiForClef, type Clef, type ClefPreference, type KeySignaturePreference } from '../music/notationUtils'
+import { clefLabel, closestRhythmFigure, ledgerLinePositions, midiToStaffStep, positionInsideMeasure, resolveClef, splitIntoRhythmFigures, staffBottomStep, writtenMidiForClef, type Clef, type ClefPreference, type KeySignaturePreference } from '../music/notationUtils'
 import { midiToDisplayName } from '../music/noteUtils'
 import { trackDuration } from '../music/referenceTrack'
 import type { NoteNaming, ReferenceNote, ReferenceTrack, ScoreLayout } from '../types/music'
@@ -110,31 +110,103 @@ function WrappedScore({ track, elapsed, running, naming, clefPreference, keySign
   const keys = resolvedKeys(track, keySignaturePreference).map((key) => ({ ...key, beat: beatAtTime(track, key.time) }))
   const keyAtBeat = (beat: number) => { let active = keys[0]; for (const key of keys) { if (key.beat <= beat + 0.001) active = key; else break } return active }
   const signatureAtBeat = (beat: number) => { let active = notation.signatures[0]; for (const signature of notation.signatures) { if (signature.beat <= beat + 0.001) active = signature; else break } return active }
-  const boundaries = [...notation.bars.map((bar) => bar.beat), totalBeats]
+  const boundaries = [...new Set([...notation.bars.map((bar) => Number(bar.beat.toFixed(6))), Number(totalBeats.toFixed(6))])].sort((a, b) => a - b)
   const systems = Array.from({ length: Math.ceil((boundaries.length - 1) / 4) }, (_, systemIndex) => {
     const firstBoundary = systemIndex * 4, startBeat = boundaries[firstBoundary], endBeat = boundaries[Math.min(boundaries.length - 1, firstBoundary + 4)]
-    return { startBeat, endBeat, bars: notation.bars.filter((bar) => bar.beat >= startBeat - 0.001 && bar.beat < endBeat - 0.001) }
+    return { firstBoundary, startBeat, endBeat, bars: notation.bars.filter((bar) => bar.beat >= startBeat - 0.001 && bar.beat < endBeat - 0.001) }
   })
   const activeId = running ? track.notes.find((note) => elapsed >= note.start && elapsed < note.start + note.duration)?.id : undefined
+  const rests: Array<{ beat: number; name: string; symbol: string }> = []
+  let restCursor = 0
+  for (const note of [...track.notes].sort((a, b) => a.start - b.start)) {
+    if (note.start > restCursor + 0.02) {
+      let beat = beatAtTime(track, restCursor)
+      const gapEnd = beatAtTime(track, note.start)
+      while (beat < gapEnd - 0.01) {
+        const nextBar = boundaries.find((boundary) => boundary > beat + 0.01) ?? gapEnd
+        const segmentEnd = Math.min(gapEnd, nextBar)
+        for (const figure of splitIntoRhythmFigures(segmentEnd - beat)) { rests.push({ beat: beat + figure.beats / 2, name: figure.name, symbol: figure.restSymbol }); beat += figure.beats }
+        if (segmentEnd - beat < 0.125) beat = segmentEnd
+      }
+    }
+    restCursor = Math.max(restCursor, note.start + note.duration)
+  }
+  const tiePairs = [...track.notes].sort((a, b) => a.start - b.start).flatMap((note, index, notes) => {
+    if (!note.tieStart) return []
+    const next = notes.slice(index + 1).find((candidate) => candidate.midi === note.midi && candidate.tieStop)
+    return next ? [{ from: note, to: next }] : []
+  })
   return <section className="score-panel-view wrapped-score"><div className="score-heading"><span>{clefLabel(clef)} · sistemas</span><span>{systems.length} sistema(s)</span></div>{systems.map((system, systemIndex) => {
     const key = keyAtBeat(system.startBeat), signature = signatureAtBeat(system.startBeat), span = Math.max(1, system.endBeat - system.startBeat)
-    const xAtBeat = (beat: number) => 145 + (beat - system.startBeat) / span * 680
-    const notes = track.notes.filter((note) => { const beat = beatAtTime(track, note.start); return beat >= system.startBeat - 0.001 && beat < system.endBeat - 0.001 })
+    const contentStart = Math.max(145, 125 + Math.abs(key.fifths) * 9)
+    const boundaryX = (beat: number) => contentStart + (beat - system.startBeat) / span * (842 - contentStart)
+    const systemBoundaries = boundaries.slice(system.firstBoundary, Math.min(boundaries.length, system.firstBoundary + 5))
+    const noteX = (beat: number) => {
+      let measureIndex = systemBoundaries.findIndex((boundary, index) => index < systemBoundaries.length - 1 && beat >= boundary - 0.001 && beat < systemBoundaries[index + 1] - 0.001)
+      if (measureIndex < 0) measureIndex = Math.max(0, systemBoundaries.length - 2)
+      const start = systemBoundaries[measureIndex], end = systemBoundaries[measureIndex + 1] ?? system.endBeat
+      return positionInsideMeasure(beat, start, end, boundaryX(start), boundaryX(end), 24)
+    }
+    const items = [...track.notes].sort((a, b) => a.start - b.start).filter((note) => { const beat = beatAtTime(track, note.start); return beat >= system.startBeat - 0.001 && beat < system.endBeat - 0.001 }).map((note) => {
+      const beat = beatAtTime(track, note.start), endBeat = beatAtTime(track, note.start + note.duration), noteKey = keyAtBeat(beat), y = noteY(note.midi, clef, noteKey.fifths < 0), stemDown = y < 66, x = noteX(beat)
+      return { note, beat, endBeat, key: noteKey, x, y, stemDown, stemX: x + (stemDown ? -7 : 7), stemEndY: y + (stemDown ? 31 : -31), figure: closestRhythmFigure(endBeat - beat) }
+    })
+    const accidentals = new Map<string, string>(), accidentalState = new Map<string, number>()
+    for (const item of items) {
+      const info = accidentalInfo(item.note.midi, item.key.fifths)
+      const measureIndex = Math.max(0, systemBoundaries.findIndex((boundary, index) => index < systemBoundaries.length - 1 && item.beat >= boundary - 0.001 && item.beat < systemBoundaries[index + 1] - 0.001))
+      const stateKey = `${measureIndex}:${midiToStaffStep(writtenMidiForClef(item.note.midi, clef), item.key.fifths < 0)}`, previous = accidentalState.get(stateKey)
+      const symbol = previous === info.actual ? '' : info.symbol || (previous !== undefined && info.actual === info.expected ? (info.actual === 0 ? '♮' : info.actual > 0 ? '♯' : '♭') : '')
+      accidentals.set(item.note.id, symbol); accidentalState.set(stateKey, info.actual)
+    }
+    const beamGroups: Array<typeof items> = [], beamedIds = new Set<string>()
+    let pending: typeof items = []
+    const flush = () => { if (pending.length > 1) { beamGroups.push(pending); pending.forEach((item) => beamedIds.add(item.note.id)) }; pending = [] }
+    for (const item of items) {
+      if (!item.figure.flags) { flush(); continue }
+      const itemSignature = signatureAtBeat(item.beat), pulse = itemSignature.clocksPerClick ? itemSignature.clocksPerClick / 24 : (itemSignature.numerator > 3 && itemSignature.numerator % 3 === 0 ? 1.5 : 4 / itemSignature.denominator)
+      const pulseIndex = Math.floor((item.beat - itemSignature.beat + 0.001) / pulse), previous = pending.at(-1)
+      if (previous) {
+        const previousSignature = signatureAtBeat(previous.beat), previousPulse = previousSignature.clocksPerClick ? previousSignature.clocksPerClick / 24 : (previousSignature.numerator > 3 && previousSignature.numerator % 3 === 0 ? 1.5 : 4 / previousSignature.denominator)
+        const previousPulseIndex = Math.floor((previous.beat - previousSignature.beat + 0.001) / previousPulse)
+        if (Math.abs(previous.endBeat - item.beat) > 0.02 || previousSignature !== itemSignature || previousPulseIndex !== pulseIndex || previous.stemDown !== item.stemDown) flush()
+      }
+      pending.push(item)
+    }
+    flush()
+    const tupletGroups: Array<typeof items> = []
+    let tupletPending: typeof items = []
+    const flushTuplet = () => { if (tupletPending.length) tupletGroups.push(tupletPending); tupletPending = [] }
+    for (const item of items) {
+      const previous = tupletPending.at(-1)
+      if (!item.note.tuplet) { flushTuplet(); continue }
+      if (previous && (previous.note.tuplet?.actual !== item.note.tuplet.actual || previous.note.tuplet.normal !== item.note.tuplet.normal || Math.abs(previous.endBeat - item.beat) > 0.02)) flushTuplet()
+      tupletPending.push(item)
+      if (tupletPending.length >= item.note.tuplet.actual) flushTuplet()
+    }
+    flushTuplet()
+    const currentBeat = beatAtTime(track, elapsed), playhead = currentBeat >= system.startBeat && currentBeat < system.endBeat ? noteX(currentBeat) : undefined
     return <svg key={systemIndex} className="score-system" viewBox="0 0 860 165" aria-label={`Sistema ${systemIndex + 1}`}>
       {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="18" x2="842" y1={y} y2={y} />)}
       {clef === 'bass' ? <text className="bass-clef" x="25" y="82">𝄢</text> : <g><text className="treble-clef" x="23" y="91">𝄞</text>{clef === 'treble8vb' && <text className="octave-mark" x="40" y="111">8</text>}</g>}
       <g className="key-signature" transform="translate(73 0)">{keySignatureYs(clef, key.fifths).map((y, index) => <text key={index} x={index * 9} y={y + 6}>{key.fifths > 0 ? '♯' : '♭'}</text>)}</g>
       <g className="time-signature" transform={`translate(${91 + Math.abs(key.fifths) * 9} 0)`}><text y="62">{signature.numerator}</text><text y="83">{signature.denominator}</text></g>
-      {system.bars.map((bar) => <g key={bar.measure}><line className="bar-line" x1={xAtBeat(bar.beat)} x2={xAtBeat(bar.beat)} y1={STAFF_TOP} y2={STAFF_BOTTOM}/><text className="measure-number" x={xAtBeat(bar.beat) + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
-      {notes.map((note) => { const beat = beatAtTime(track, note.start), x = xAtBeat(beat), y = noteY(note.midi, clef, key.fifths < 0), figure = closestRhythmFigure(beatAtTime(track, note.start + note.duration) - beat), stemDown = y < 66, active = note.id === activeId; return <g key={note.id} className={`score-note ${active ? 'active' : ''} ${note.id === selectedNoteId ? 'selected' : ''}`} onClick={() => onSelectNote(note.id)}>
+      {system.bars.map((bar) => <g key={bar.measure}><line className="bar-line" x1={boundaryX(bar.beat)} x2={boundaryX(bar.beat)} y1={STAFF_TOP} y2={STAFF_BOTTOM}/><text className="measure-number" x={boundaryX(bar.beat) + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
+      {rests.filter((rest) => rest.beat >= system.startBeat && rest.beat < system.endBeat).map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={noteX(rest.beat)} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
+      {items.map((item) => { const { note, x, y, figure, stemDown } = item, active = note.id === activeId; return <g key={note.id} className={`score-note ${active ? 'active' : ''} ${note.id === selectedNoteId ? 'selected' : ''}`} role="button" tabIndex={0} onClick={() => onSelectNote(note.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelectNote(note.id) }}>
         {ledgerLinePositions(y, STAFF_TOP, STAFF_BOTTOM, 12).map((lineY) => <line key={lineY} className="ledger-line" x1={x - 11} x2={x + 11} y1={lineY} y2={lineY}/>)}
-        {accidentalInfo(note.midi, key.fifths).symbol && <text className="accidental" x={x - 18} y={y + 5}>{accidentalInfo(note.midi, key.fifths).symbol}</text>}
+        {accidentals.get(note.id) && <text className="accidental" x={x - 18} y={y + 5}>{accidentals.get(note.id)}</text>}
         <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`}/>
-        {figure.stem && <line className="note-stem" x1={x + (stemDown ? -7 : 7)} x2={x + (stemDown ? -7 : 7)} y1={y} y2={y + (stemDown ? 31 : -31)}/>}
-        {figure.name.includes('pontuada') && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5"/>}{note.tuplet && <text className="tuplet-number" x={x} y="24">{note.tuplet.actual}</text>}
-        {naming !== 'hidden' && <text className="score-note-name" x={x} y="132" textAnchor="middle">{naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming, false, key.fifths < 0)}</text>}
+        {figure.stem && <line className="note-stem" x1={item.stemX} x2={item.stemX} y1={y} y2={item.stemEndY}/>}
+        {!beamedIds.has(note.id) && Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={stemDown ? `M ${x - 7} ${y + 31 - index * 8} q -17 -8 -8 -20` : `M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`}/>)}
+        {figure.name.includes('pontuada') && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5"/>}
+        {naming !== 'hidden' && <text className="score-note-name" x={x} y="132" textAnchor="middle">{naming === 'lyrics' ? note.lyric : midiToDisplayName(note.midi, naming, false, item.key.fifths < 0)}</text>}
       </g>})}
-      <line className="bar-line" x1="842" x2="842" y1={STAFF_TOP} y2={STAFF_BOTTOM}/>
+      {beamGroups.map((group, groupIndex) => <g className="note-beams" key={`system-beam-${groupIndex}`}>{group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line className={activeId === item.note.id || activeId === next.note.id ? 'active' : ''} key={item.note.id} x1={item.stemX} y1={item.stemEndY} x2={next.stemX} y2={next.stemEndY}/> })}{group.map((item, index) => { if (item.figure.flags < 2) return null; const next = group[index + 1], previous = group[index - 1], offset = item.stemDown ? -8 : 8; if (next?.figure.flags >= 2) return <line key={`secondary-${item.note.id}`} x1={item.stemX} y1={item.stemEndY + offset} x2={next.stemX} y2={next.stemEndY + offset}/>; if (previous?.figure.flags >= 2) return null; return <line key={`hook-${item.note.id}`} x1={item.stemX} y1={item.stemEndY + offset} x2={item.stemX + (next ? 12 : -12)} y2={item.stemEndY + offset}/> })}</g>)}
+      {tiePairs.map((tie) => { const fromBeat = beatAtTime(track, tie.from.start), toBeat = beatAtTime(track, tie.to.start), fromHere = fromBeat >= system.startBeat && fromBeat < system.endBeat, toHere = toBeat >= system.startBeat && toBeat < system.endBeat; if (!fromHere && !toHere) return null; const y = noteY(tie.from.midi, clef, key.fifths < 0), fromX = fromHere ? noteX(fromBeat) + 7 : boundaryX(system.startBeat) + 4, toX = toHere ? noteX(toBeat) - 7 : boundaryX(system.endBeat) - 4; return <path key={`system-tie-${tie.from.id}`} className="note-tie" d={`M ${fromX} ${y + 9} Q ${(fromX + toX) / 2} ${y + 21} ${toX} ${y + 9}`}/> })}
+      {tupletGroups.map((group, index) => { const first = group[0], last = group.at(-1)!, center = (first.x + last.x) / 2, y = Math.max(15, Math.min(...group.map((item) => item.stemEndY)) - 8); return <g className="tuplet-bracket" key={`tuplet-${index}`}><line x1={first.x - 5} x2={center - 8} y1={y} y2={y}/><text className="tuplet-number" x={center} y={y + 4} textAnchor="middle">{first.note.tuplet!.actual}</text><line x1={center + 8} x2={last.x + 5} y1={y} y2={y}/></g> })}
+      {playhead !== undefined && <line className="playhead" x1={playhead} x2={playhead} y1="25" y2="145"/>}
+      <line className="bar-line" x1={boundaryX(system.endBeat)} x2={boundaryX(system.endBeat)} y1={STAFF_TOP} y2={STAFF_BOTTOM}/>
     </svg>
   })}</section>
 }
