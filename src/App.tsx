@@ -42,6 +42,7 @@ export default function App() {
   const framesRef = useRef<EvaluatedFrame[]>([])
   const trackRef = useRef(track)
   const historyRef = useRef<Array<{ frequency: number; timestamp: number }>>([])
+  const lastAnalysisRef = useRef(0)
   const lastRenderRef = useRef(0)
 
   useEffect(() => { trackRef.current = track }, [track])
@@ -63,7 +64,7 @@ export default function App() {
 
   const start = async () => {
     setError(''); setScore(undefined); setFrames([]); setElapsed(0); setDetected(undefined)
-    framesRef.current = []; historyRef.current = []; lastRenderRef.current = 0
+    framesRef.current = []; historyRef.current = []; lastAnalysisRef.current = 0; lastRenderRef.current = 0
     try {
       const microphone = await MicrophoneInput.create()
       microphoneRef.current = microphone
@@ -91,6 +92,9 @@ export default function App() {
         }
         setCountdown(undefined)
         if (now >= trackDuration(trackRef.current)) { setElapsed(trackDuration(trackRef.current)); void finish(); return }
+        setElapsed(now)
+        if (now - lastAnalysisRef.current < 1 / 30) { animationRef.current = requestAnimationFrame(analyse); return }
+        lastAnalysisRef.current = now
         const samples = mic.readSamples()
         setVolume(rootMeanSquare(samples))
         const result = detectPitchYin(samples, mic.context.sampleRate)
@@ -104,7 +108,7 @@ export default function App() {
           setDetected(pitchFrame)
           if (expected) framesRef.current.push({ ...pitchFrame, expectedNoteId: expected.id, expectedMidi: expected.midi, differenceCents: frequencyDifferenceInCents(frequency, midiToFrequency(expected.midi)) })
         } else setDetected(undefined)
-        if (now - lastRenderRef.current > 0.05) { setElapsed(now); setFrames([...framesRef.current]); lastRenderRef.current = now }
+        if (now - lastRenderRef.current > 0.05) { setFrames([...framesRef.current]); lastRenderRef.current = now }
         animationRef.current = requestAnimationFrame(analyse)
       }
       animationRef.current = requestAnimationFrame(analyse)

@@ -45,7 +45,6 @@ function NoteGlyph({ note, track, naming, selected, onSelect }: { note: Referenc
     {Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={`M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`} />)}
     {dotted && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5" />}
     <text className="score-note-name" x={x} y={132} textAnchor="middle">{midiToDisplayName(note.midi, naming)}</text>
-    <text className="rhythm-name" x={x} y={151} textAnchor="middle">{figure.name}</text>
   </g>
 }
 
@@ -80,7 +79,7 @@ export function SheetMusic({ track, elapsed, running, naming, selectedNoteId, on
         <text className="treble-clef" x="15" y="91">𝄞</text>
         {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1={LEFT - 15} x2={width - 20} y1={y} y2={y} />)}
         {Array.from({ length: Math.floor(totalBeats / 4) + 1 }, (_, index) => index * 4).map((beat) => <g key={beat}><line className="bar-line" x1={LEFT + beat * BEAT_WIDTH} x2={LEFT + beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{Math.floor(beat / 4) + 1}</text></g>)}
-        {rests.map((rest, index) => <g key={`${rest.beat}-${index}`}><text className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle">{rest.symbol}</text><text className="rhythm-name" x={LEFT + rest.beat * BEAT_WIDTH} y="151" textAnchor="middle">pausa de {rest.name}</text></g>)}
+        {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
         {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
       </svg>

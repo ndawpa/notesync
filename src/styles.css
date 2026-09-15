@@ -42,6 +42,14 @@ header p { margin: 0; color: #99a7bd; }
 .visualizer-toolbar div { display: flex; gap: 5px; }
 .visualizer-toolbar button { min-width: 30px; padding: 3px 8px; }
 .visualizer-wrap { overflow-x: auto; overflow-y: hidden; scrollbar-color: #43516b #172033; scrollbar-width: thin; }
+.visualizer-body { display: flex; min-width: 0; }
+.pitch-guide { position: relative; z-index: 2; flex: 0 0 102px; border-right: 1px solid #43516b; box-shadow: 5px 0 12px #0005; }
+.pitch-guide-background { fill: #111a2b; }
+.midi-number { fill: #aab6c9; font-size: 10px; font-variant-numeric: tabular-nums; }
+.piano-key { stroke: #111827; stroke-width: 1; transition: fill .06s linear; }
+.piano-key.white { fill: #f8fafc; }
+.piano-key.black { fill: #202735; }
+.piano-key.active { fill: #43d9ad; stroke: #b7ffe9; stroke-width: 2; }
 .visualizer { display: block; max-width: none; }
 .visualizer text { fill: #8492a8; font-size: 10px; }
 .grid { stroke: #29344a; stroke-width: .7; }
