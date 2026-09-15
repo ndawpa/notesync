@@ -22,7 +22,7 @@ A armadura pode ser importada automaticamente do evento MIDI `Key Signature` (`0
 
 A clave, a armadura e a fórmula de compasso permanecem fixas à esquerda durante a rolagem da partitura. Quando o MIDI contém mudanças de armadura ou de compasso, o indicador fixo acompanha os valores ativos na posição atual da reprodução.
 
-As barras de compasso mantêm um pequeno espaçamento antes das notas do primeiro tempo, evitando que a cabeça da nota fique desenhada sobre a barra.
+Cada compasso reserva margens internas antes da primeira nota e depois da última. Notas, pausas, feixes e playhead usam a mesma distribuição proporcional, evitando que as figuras encostem nas barras sem perder sua posição rítmica relativa.
 
 ## Executar
 

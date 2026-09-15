@@ -49,6 +49,26 @@ function notationLayout(track: ReferenceTrack, totalBeats: number) {
   return { signatures, bars: bars.filter((bar, index) => index === 0 || Math.abs(bar.beat - bars[index - 1].beat) > 0.001) }
 }
 
+type NotationLayout = ReturnType<typeof notationLayout>
+
+function scoreXAtBeat(beat: number, notation: NotationLayout) {
+  let measureStart = notation.bars[0]?.beat ?? 0
+  let measureEnd: number | undefined
+  for (const bar of notation.bars) {
+    if (bar.beat <= beat + 0.001) measureStart = bar.beat
+    else { measureEnd = bar.beat; break }
+  }
+  if (measureEnd === undefined) {
+    let signature = notation.signatures[0]
+    for (const candidate of notation.signatures) { if (candidate.beat <= measureStart + 0.001) signature = candidate; else break }
+    measureEnd = measureStart + signature.numerator * 4 / signature.denominator
+  }
+  const measureWidth = Math.max(1, (measureEnd - measureStart) * BEAT_WIDTH)
+  const margin = Math.min(BAR_NOTE_GAP, measureWidth * 0.18)
+  const position = Math.max(0, Math.min(1, (beat - measureStart) / Math.max(0.001, measureEnd - measureStart)))
+  return LEFT + measureStart * BEAT_WIDTH + margin + position * Math.max(1, measureWidth - margin * 2)
+}
+
 function noteY(midi: number, clef: Clef, preferFlats = false) {
   return STAFF_BOTTOM - (midiToStaffStep(writtenMidiForClef(midi, clef), preferFlats) - staffBottomStep(clef)) * 6
 }
@@ -86,11 +106,11 @@ function keySignatureYs(clef: Clef, fifths: number) {
   return midis.map((midi) => noteY(clef === 'treble8vb' ? midi - 12 : midi, clef))
 }
 
-function NoteGlyph({ note, track, naming, clef, fifths, beamed, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; fifths: number; beamed: boolean; selected: boolean; onSelect: () => void }) {
+function NoteGlyph({ note, track, notation, naming, clef, fifths, beamed, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; notation: NotationLayout; naming: NoteNaming; clef: Clef; fifths: number; beamed: boolean; selected: boolean; onSelect: () => void }) {
   const startBeat = beatAtTime(track, note.start)
   const beats = beatAtTime(track, note.start + note.duration) - startBeat
   const figure = closestRhythmFigure(beats)
-  const x = LEFT + startBeat * BEAT_WIDTH
+  const x = scoreXAtBeat(startBeat, notation)
   const y = noteY(note.midi, clef, fifths < 0)
   const ledgerLines = ledgerLinePositions(y, STAFF_TOP, STAFF_BOTTOM, 12)
   const dotted = figure.name.includes('pontuada')
@@ -111,8 +131,8 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
   const duration = trackDuration(track)
   const totalBeats = Math.max(4, beatAtTime(track, duration))
   const width = Math.max(760, Math.ceil(LEFT + totalBeats * BEAT_WIDTH + 50))
-  const playheadX = LEFT + beatAtTime(track, elapsed) * BEAT_WIDTH
   const notation = notationLayout(track, totalBeats)
+  const playheadX = scoreXAtBeat(beatAtTime(track, elapsed), notation)
   const clef = resolveClef(clefPreference, track.notes.map((note) => note.midi))
   const keys = resolvedKeys(track, keySignaturePreference).map((key) => ({ ...key, beat: beatAtTime(track, key.time) }))
   const keyAtTime = (time: number) => { let active = keys[0]; for (const key of keys) { if (key.time <= time + 0.001) active = key; else break } return active }
@@ -123,7 +143,7 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
     const startBeat = beatAtTime(track, note.start)
     const endBeat = beatAtTime(track, note.start + note.duration)
     const key = keyAtTime(note.start)
-    return { note, startBeat, endBeat, x: LEFT + startBeat * BEAT_WIDTH, y: noteY(note.midi, clef, key.fifths < 0), flags: closestRhythmFigure(endBeat - startBeat).flags }
+    return { note, startBeat, endBeat, x: scoreXAtBeat(startBeat, notation), y: noteY(note.midi, clef, key.fifths < 0), flags: closestRhythmFigure(endBeat - startBeat).flags }
   })
   const beamGroups: typeof rhythmicNotes[] = []
   let pendingGroup: typeof rhythmicNotes = []
@@ -176,12 +196,11 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, ke
         <svg className="sheet-music" width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-label="Partitura do exercício">
         {Array.from({ length: 5 }, (_, index) => STAFF_TOP + index * 12).map((y) => <line key={y} className="staff-line" x1="0" x2={width - 20} y1={y} y2={y} />)}
         {notation.bars.map((bar) => {
-          const boundaryX = LEFT + bar.beat * BEAT_WIDTH
-          const barX = boundaryX - BAR_NOTE_GAP
-          return <g key={`${bar.beat}-${bar.measure}`}>{bar.beat > 0.001 && <line className="bar-line" x1={barX} x2={barX} y1={STAFF_TOP} y2={STAFF_BOTTOM} />}<text className="measure-number" x={bar.beat > 0.001 ? barX + 4 : boundaryX} y={STAFF_TOP - 9}>{bar.measure}</text></g>
+          const barX = LEFT + bar.beat * BEAT_WIDTH
+          return <g key={`${bar.beat}-${bar.measure}`}>{bar.beat > 0.001 && <line className="bar-line" x1={barX} x2={barX} y1={STAFF_TOP} y2={STAFF_BOTTOM} />}<text className="measure-number" x={barX + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>
         })}
-        {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
-        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
+        {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={scoreXAtBeat(rest.beat, notation)} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
+        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} notation={notation} naming={naming} clef={clef} fifths={keyAtTime(note.start).fifths} beamed={beamedNoteIds.has(note.id)} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
         {beamGroups.map((group, groupIndex) => <g className="note-beams" key={`beam-${groupIndex}`}>
           {group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line key={`primary-${item.note.id}`} x1={item.x + 7} y1={item.y - 31} x2={next.x + 7} y2={next.y - 31} /> })}
           {group.map((item, index) => {
