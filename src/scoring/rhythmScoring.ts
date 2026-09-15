@@ -24,6 +24,6 @@ export function evaluateTimings(track: ReferenceTrack, frames: EvaluatedFrame[])
 
 export function rhythmScore(track: ReferenceTrack, frames: EvaluatedFrame[]): number {
   const timings = evaluateTimings(track, frames)
-  if (!timings.length) return 0
-  return timings.reduce((sum, timing) => sum + timingScore(timing.onsetErrorMs) * 0.7 + timingScore(timing.durationErrorMs) * 0.3, 0) / timings.length
+  if (!track.notes.length) return 0
+  return timings.reduce((sum, timing) => sum + timingScore(timing.onsetErrorMs) * 0.7 + timingScore(timing.durationErrorMs) * 0.3, 0) / track.notes.length
 }

@@ -42,6 +42,7 @@ header p { margin: 0; color: #99a7bd; }
 .progress::-webkit-progress-value { background: #43d9ad; transition: width .05s linear; }
 .progress::-moz-progress-bar { background: #43d9ad; }
 .score-panel h2 { margin: 0 0 18px; }
+.no-voice { margin: -4px 0 16px; padding: 10px 12px; color: #fed7aa; background: #431407; border: 1px solid #9a3412; border-radius: 8px; }
 .score-head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .score-head div { padding: 14px; border-radius: 9px; background: #1a2439; }
 .score-head strong { font-size: 1.8rem; }
