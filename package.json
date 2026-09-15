@@ -10,7 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.2.0",
+    "@huggingface/transformers": "3.8.1",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",

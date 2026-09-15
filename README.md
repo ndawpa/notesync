@@ -35,6 +35,8 @@ Abra o endereço indicado pelo Vite, permita o microfone e pressione **Iniciar**
 
 No modo **Solfejo**, o modelo de reconhecimento é baixado do Hugging Face e guardado no cache do navegador na primeira avaliação. Esse primeiro processamento pode demorar e requer conexão; as execuções seguintes reutilizam o modelo armazenado. O reconhecimento de sílabas cantadas é experimental e funciona melhor com fones de ouvido e articulação clara no início de cada nota.
 
+O reconhecedor usa Transformers.js 3.8.1 fixado e Whisper Tiny em `q8`/WASM. Essa combinação evita uma incompatibilidade de criação de sessão observada entre modelos Whisper quantizados e versões mais recentes do ONNX Runtime.
+
 ## Publicar
 
 O projeto segue o mesmo modelo de publicação do YouTube Converter: imagem no GitHub Container Registry e chart Helm OCI.
