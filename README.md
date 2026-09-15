@@ -2,6 +2,8 @@
 
 Protótipo local de treinamento vocal com React, TypeScript, Web Audio API e detecção de pitch YIN implementada no projeto.
 
+A melodia de referência é sintetizada durante o exercício e pode ser ligada, desligada ou ter seu volume ajustado antes de iniciar. Use fones para evitar que o microfone capture a própria referência.
+
 ## Executar
 
 ```bash

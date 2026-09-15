@@ -11,6 +11,12 @@ h1 { margin: 2px 0 4px; font-size: clamp(1.6rem, 3vw, 2.5rem); }
 header p { margin: 0; color: #99a7bd; }
 .eyebrow { color: #43d9ad; text-transform: uppercase; letter-spacing: .12em; font-size: .76rem; font-weight: 700; }
 .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.control-area { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.reference-controls { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 16px; color: #cbd5e1; font-size: .85rem; }
+.reference-controls label { display: flex; align-items: center; gap: 7px; }
+.reference-controls input[type="checkbox"] { accent-color: #43d9ad; }
+.reference-volume input { width: 110px; accent-color: #43d9ad; }
+.reference-volume span { width: 34px; color: #94a3b8; font-variant-numeric: tabular-nums; }
 .error { padding: 12px 16px; color: #ffd6db; background: #6e2430; border-radius: 8px; }
 .current-card, .score-panel { background: #121a2cdd; border: 1px solid #283550; border-radius: 14px; padding: 18px; box-shadow: 0 12px 40px #0003; }
 .current-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 16px; }
@@ -44,4 +50,5 @@ dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: h
 dl div { padding: 12px; background: #121a2c; }
 dd { margin: 3px 0 0; font-weight: 650; }
 .privacy { text-align: center; color: #718096; font-size: .78rem; margin-top: 24px; }
-@media (max-width: 760px) { header { align-items: flex-start; flex-direction: column; } .controls { justify-content: flex-start; } .current-card { grid-template-columns: repeat(2, 1fr); } .score-head, dl { grid-template-columns: 1fr 1fr; } }
+.headphone-tip { padding: 10px 14px; color: #bfdbfe; background: #172554; border: 1px solid #1e3a8a; border-radius: 8px; text-align: center; font-size: .85rem; }
+@media (max-width: 760px) { header { align-items: flex-start; flex-direction: column; } .control-area { align-items: flex-start; } .controls, .reference-controls { justify-content: flex-start; } .current-card { grid-template-columns: repeat(2, 1fr); } .score-head, dl { grid-template-columns: 1fr 1fr; } }
