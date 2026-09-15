@@ -14,4 +14,4 @@ export interface ReferenceTrack {
 }
 
 export type MusicView = 'timeline' | 'score'
-export type NoteNaming = 'letter' | 'solfege'
+export type NoteNaming = 'letter' | 'solfege' | 'hidden'

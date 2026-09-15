@@ -6,6 +6,9 @@ describe('music notation utilities', () => {
   it('names notes as letters or solfege', () => {
     expect(midiToDisplayName(60, 'letter')).toBe('C4')
     expect(midiToDisplayName(61, 'solfege')).toBe('Dó#4')
+    expect(midiToDisplayName(60, 'letter', false)).toBe('C')
+    expect(midiToDisplayName(61, 'solfege', false)).toBe('Dó#')
+    expect(midiToDisplayName(60, 'hidden')).toBe('')
   })
 
   it('maps durations to conventional figures using BPM', () => {
