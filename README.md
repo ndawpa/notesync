@@ -8,6 +8,8 @@ A melodia de referência é sintetizada durante o exercício e pode ser ligada, 
 
 O exercício também oferece metrônomo sincronizado ao andamento e à fórmula de compasso (incluindo mudanças encontradas no MIDI), tom inicial baseado na primeira nota e contagem preparatória configurável.
 
+O tom inicial usa um ganho mais alto que a melodia, dura quatro pulsações por padrão e pode ser configurado entre uma e oito pulsações.
+
 A timeline usa escala temporal proporcional, oferece três níveis de zoom e acompanha automaticamente o playhead em exercícios maiores que a área visível.
 
 Durante a reprodução, o playhead permanece amarelo e a nota esperada ativa recebe destaque verde-azulado tanto na timeline quanto na figura rítmica da partitura.

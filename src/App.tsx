@@ -37,7 +37,7 @@ export default function App() {
   const [referenceVolume, setReferenceVolume] = useState(0.35)
   const [metronome, setMetronome] = useState(true)
   const [initialCue, setInitialCue] = useState(true)
-  const [initialCueBeats, setInitialCueBeats] = useState(2)
+  const [initialCueBeats, setInitialCueBeats] = useState(4)
   const [countInBeats, setCountInBeats] = useState(4)
   const [musicView, setMusicView] = useState<MusicView>('timeline')
   const [noteNaming, setNoteNaming] = useState<NoteNaming>('letter')

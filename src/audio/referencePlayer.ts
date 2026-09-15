@@ -68,7 +68,7 @@ export class ReferencePlayer {
   }
 
   scheduleCue(midi: number, startedAt: number, duration: number) {
-    this.scheduleTone(midiToFrequency(midi), startedAt, duration, 'sine', 0.45)
+    this.scheduleTone(midiToFrequency(midi), startedAt, duration, 'sine', 0.9)
   }
 
   scheduleMetronome(track: ReferenceTrack, startedAt: number, countStartedAt: number, countInBeats: number) {

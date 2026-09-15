@@ -37,7 +37,7 @@ export function Controls({ running, processing, hasResults, evaluationMode, play
       <label><input type="checkbox" checked={initialCue} disabled={running} onChange={(event) => onInitialCueChange(event.target.checked)} /> Tom inicial</label>
       <label>Duração do tom
         <select value={initialCueBeats} disabled={running || !initialCue} onChange={(event) => onInitialCueBeatsChange(Number(event.target.value))}>
-          <option value="1">1 tempo</option><option value="2">2 tempos</option><option value="4">4 tempos</option>
+          <option value="1">1 tempo</option><option value="2">2 tempos</option><option value="4">4 tempos</option><option value="8">8 tempos</option>
         </select>
       </label>
       <label>Contagem
