@@ -12,6 +12,8 @@ O eixo MIDI e o piano virtual permanecem fixos durante a rolagem; a tecla espera
 
 O usuário pode alternar entre a timeline e uma partitura simplificada que respeita fórmulas como 4/4, 3/4 e 6/8, escolher entre cifras (`C`, `D`, `E`) e nomes em português (`Dó`, `Ré`, `Mi`), e editar pitch, início e duração ao selecionar uma nota. Clicar novamente no rótulo selecionado oculta os rótulos. Na partitura, os rótulos visuais omitem o número da oitava. As alterações permanecem na sessão atual do navegador.
 
+Colcheias e semicolcheias consecutivas são agrupadas automaticamente por barras, respeitando pausas, limites de pulsação e a organização ternária de compassos compostos como 6/8.
+
 Na partitura, a clave pode ser escolhida automaticamente ou definida manualmente como Sol, Sol 8vb ou Fá. O modo automático minimiza notas fora do pentagrama e linhas suplementares sem alterar a altura sonora usada na avaliação.
 
 ## Executar

@@ -81,6 +81,7 @@ header p { margin: 0; color: #99a7bd; }
 .note-head { fill: #f8f5ed; stroke: #111; stroke-width: 1.7; }
 .note-head.filled { fill: #111; }
 .note-stem, .note-flag { fill: none; stroke: #111; stroke-width: 1.8; }
+.note-beams { fill: none; stroke: #111; stroke-linecap: butt; stroke-width: 5; pointer-events: none; }
 .duration-dot { fill: #111; }
 .accidental { fill: #111; font-family: serif; font-size: 18px; }
 .score-note-name { fill: #27364d; font-size: 10px; font-weight: 700; }

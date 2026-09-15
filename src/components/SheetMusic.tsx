@@ -51,7 +51,7 @@ function noteY(midi: number, clef: Clef) {
   return STAFF_BOTTOM - (midiToStaffStep(writtenMidiForClef(midi, clef)) - staffBottomStep(clef)) * 6
 }
 
-function NoteGlyph({ note, track, naming, clef, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; selected: boolean; onSelect: () => void }) {
+function NoteGlyph({ note, track, naming, clef, beamed, selected, onSelect }: { note: ReferenceNote; track: ReferenceTrack; naming: NoteNaming; clef: Clef; beamed: boolean; selected: boolean; onSelect: () => void }) {
   const startBeat = beatAtTime(track, note.start)
   const beats = beatAtTime(track, note.start + note.duration) - startBeat
   const figure = closestRhythmFigure(beats)
@@ -65,7 +65,7 @@ function NoteGlyph({ note, track, naming, clef, selected, onSelect }: { note: Re
     {isSharpMidi(note.midi) && <text className="accidental" x={x - 18} y={y + 5}>♯</text>}
     <ellipse className={figure.filled ? 'note-head filled' : 'note-head'} cx={x} cy={y} rx="8" ry="5" transform={`rotate(-18 ${x} ${y})`} />
     {figure.stem && <line className="note-stem" x1={x + 7} x2={x + 7} y1={y} y2={y - 31} />}
-    {Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={`M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`} />)}
+    {!beamed && Array.from({ length: figure.flags }, (_, index) => <path key={index} className="note-flag" d={`M ${x + 7} ${y - 31 + index * 8} q 17 8 8 20`} />)}
     {dotted && <circle className="duration-dot" cx={x + 14} cy={y} r="2.5" />}
     {naming !== 'hidden' && <text className="score-note-name" x={x} y={132} textAnchor="middle">{visibleLabel}</text>}
   </g>
@@ -79,6 +79,30 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, se
   const playheadX = LEFT + beatAtTime(track, elapsed) * BEAT_WIDTH
   const notation = notationLayout(track, totalBeats)
   const clef = resolveClef(clefPreference, track.notes.map((note) => note.midi))
+  const rhythmicNotes = [...track.notes].sort((a, b) => a.start - b.start).map((note) => {
+    const startBeat = beatAtTime(track, note.start)
+    const endBeat = beatAtTime(track, note.start + note.duration)
+    return { note, startBeat, endBeat, x: LEFT + startBeat * BEAT_WIDTH, y: noteY(note.midi, clef), flags: closestRhythmFigure(endBeat - startBeat).flags }
+  })
+  const beamGroups: typeof rhythmicNotes[] = []
+  let pendingGroup: typeof rhythmicNotes = []
+  const flushBeamGroup = () => { if (pendingGroup.length > 1) beamGroups.push(pendingGroup); pendingGroup = [] }
+  for (const current of rhythmicNotes) {
+    if (!current.flags) { flushBeamGroup(); continue }
+    let signature = notation.signatures[0]
+    for (const candidate of notation.signatures) { if (candidate.beat <= current.startBeat + 0.001) signature = candidate; else break }
+    const pulseBeats = signature.clocksPerClick ? signature.clocksPerClick / 24 : (signature.numerator > 3 && signature.numerator % 3 === 0 ? 1.5 : 4 / signature.denominator)
+    const pulseIndex = Math.floor((current.startBeat - signature.beat + 0.001) / pulseBeats)
+    const previous = pendingGroup.at(-1)
+    let previousSignature = notation.signatures[0]
+    if (previous) for (const candidate of notation.signatures) { if (candidate.beat <= previous.startBeat + 0.001) previousSignature = candidate; else break }
+    const previousPulseBeats = previousSignature.clocksPerClick ? previousSignature.clocksPerClick / 24 : (previousSignature.numerator > 3 && previousSignature.numerator % 3 === 0 ? 1.5 : 4 / previousSignature.denominator)
+    const previousPulseIndex = previous ? Math.floor((previous.startBeat - previousSignature.beat + 0.001) / previousPulseBeats) : -1
+    if (previous && (Math.abs(previous.endBeat - current.startBeat) > 0.02 || previousSignature !== signature || previousPulseIndex !== pulseIndex)) flushBeamGroup()
+    pendingGroup.push(current)
+  }
+  flushBeamGroup()
+  const beamedNoteIds = new Set(beamGroups.flatMap((group) => group.map((item) => item.note.id)))
   const rests: Array<{ beat: number; name: string; symbol: string }> = []
   let cursorTime = 0
   for (const note of [...track.notes].sort((a, b) => a.start - b.start)) {
@@ -106,7 +130,18 @@ export function SheetMusic({ track, elapsed, running, naming, clefPreference, se
         {notation.bars.map((bar) => <g key={`${bar.beat}-${bar.measure}`}><line className="bar-line" x1={LEFT + bar.beat * BEAT_WIDTH} x2={LEFT + bar.beat * BEAT_WIDTH} y1={STAFF_TOP} y2={STAFF_BOTTOM} /><text className="measure-number" x={LEFT + bar.beat * BEAT_WIDTH + 4} y={STAFF_TOP - 9}>{bar.measure}</text></g>)}
         {notation.signatures.map((signature, index) => <g key={`${signature.beat}-${signature.numerator}/${signature.denominator}`} className="time-signature" transform={`translate(${LEFT + signature.beat * BEAT_WIDTH + (index === 0 ? -11 : 8)} 0)`}><text x="0" y="62" textAnchor="middle">{signature.numerator}</text><text x="0" y="83" textAnchor="middle">{signature.denominator}</text></g>)}
         {rests.map((rest, index) => <text key={`${rest.beat}-${index}`} className="rest-symbol" x={LEFT + rest.beat * BEAT_WIDTH} y="73" textAnchor="middle" aria-label={`Pausa de ${rest.name}`}>{rest.symbol}</text>)}
-        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
+        {track.notes.map((note) => <NoteGlyph key={note.id} note={note} track={track} naming={naming} clef={clef} beamed={beamedNoteIds.has(note.id)} selected={selectedNoteId === note.id} onSelect={() => onSelectNote(note.id)} />)}
+        {beamGroups.map((group, groupIndex) => <g className="note-beams" key={`beam-${groupIndex}`}>
+          {group.slice(0, -1).map((item, index) => { const next = group[index + 1]; return <line key={`primary-${item.note.id}`} x1={item.x + 7} y1={item.y - 31} x2={next.x + 7} y2={next.y - 31} /> })}
+          {group.map((item, index) => {
+            if (item.flags < 2) return null
+            const previous = group[index - 1], next = group[index + 1]
+            if (next?.flags >= 2) return <line key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={next.x + 7} y2={next.y - 23} />
+            if (previous?.flags >= 2) return null
+            const hookDirection = next ? 1 : -1
+            return <line key={`secondary-${item.note.id}`} x1={item.x + 7} y1={item.y - 23} x2={item.x + 7 + hookDirection * 12} y2={item.y - 23} />
+          })}
+        </g>)}
         <line className="playhead" x1={playheadX} x2={playheadX} y1="25" y2="160" />
       </svg>
     </div>
